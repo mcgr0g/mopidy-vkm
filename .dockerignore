@@ -1,0 +1,14 @@
+*.egg-info
+.tox
+.venv
+build
+target
+__pycache__
+*.pyc
+.pytest_cache
+logs/
+
+# project specific
+.asdf/
+.uv/
+.mcp/

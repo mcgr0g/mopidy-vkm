@@ -1,0 +1,65 @@
+services:
+  mopidy-vkm:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+      args:
+        - USER_UID=${USER_UID:-1000}
+        - USER_GID=${USER_GID:-1000}
+        - WCGW_VERSION=${WCGW_VERSION}
+    volumes:
+      - ..:/workspace:cached
+      - ~/.ssh:/home/mopidy/.ssh:ro
+      - ~/.gitconfig:/home/mopidy/.gitconfig:ro
+      - commandhistory:/commandhistory
+      - omz-data:/home/mopidy/.oh-my-zsh
+      - mopidy-data:/var/lib/mopidy
+      - asdf-cache:/home/mopidy/.asdf
+      - uv-cache:/home/mopidy/.cache/uv
+      - uv-venv:/home/mopidy/.venv
+      - mcp-servers-cache:/home/mopidy/.mcp-servers
+      - mcp-data:/home/mopidy/.mcp-data
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100m
+    environment:
+      - PULSE_SERVER=tcp:host.docker.internal:4713
+      - DISPLAY=${DISPLAY:-:0}
+      - USER_UID=${USER_UID:-1000}
+      - USER_GID=${USER_GID:-1000}
+      - HISTFILE=/commandhistory/.bash_history
+    network_mode: host
+    privileged: true
+    security_opt:
+      - no-new-privileges:true
+    devices:
+      - /dev/snd:/dev/snd
+    user: mopidy
+    working_dir: /workspace
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: sleep infinity
+
+volumes:
+  commandhistory:
+    driver: local
+
+  mopidy-data:
+    driver: local
+
+  asdf-cache:
+    driver: local
+
+  uv-cache:
+    driver: local
+
+  mcp-servers-cache:
+    driver: local
+
+  mcp-data:
+    driver: local
+
+  uv-venv:
+    driver: local
+
+  omz-data:
+    driver: local

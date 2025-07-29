@@ -1,0 +1,104 @@
+{
+  "name": "Mopidy VKM Development Environment with MCP",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "mopidy-vkm",
+  "workspaceFolder": "/workspace",
+  "shutdownAction": "stopCompose",
+
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:latest": {
+      "installZsh": true,
+      "installOhMyZsh": true,
+      "installOhMyZshConfig": false,
+      "configureZshAsDefaultShell": true
+    }
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "charliermarsh.ruff",
+        "tamasfe.even-better-toml",
+        "eamodio.gitlens",
+        "streetsidesoftware.code-spell-checker",
+        "streetsidesoftware.code-spell-checker-cspell-bundled-dictionaries",
+        "saoudrizwan.claude-dev",
+        "nefrob.vscode-just-syntax"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/home/mopidy/.venv/bin/python",
+        "python.terminal.activateEnvironment": false,
+        "ruff.enable": true,
+        "ruff.organizeImports": true,
+        "python.testing.pytestEnabled": true,
+        "python.testing.unittestEnabled": false,
+        "cline.mcpConfigPath": "/workspace/.vscode/mcp.json",
+        "files.watcherExclude": {
+          "**/.tox/**": true,
+          "**/.venv/**": true,
+          "**/.mcp-servers/**": true
+        },
+        "cSpell.dictionaries": [
+          "en",
+          "russian",
+          "python",
+          "software-terms",
+          "node",
+          "companies",
+          "filetypes"
+        ],
+        "cSpell.words": [
+          "vkm",
+          "VKM",
+          "mopidy",
+          "asdf",
+          "mcp",
+          "cline",
+          "wcgw"
+        ],
+        "cSpell.ignorePaths": [
+          ".venv/**",
+          "**/.venv/**",
+          ".tox/**",
+          "*.egg-info/**",
+          "build/",
+          ".devcontainer/**",
+          ".mcp-servers/**"
+        ],
+        "go.gopath": "/home/mopidy/go",
+        "go.goroot": "/usr/lib/go",
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "terminal.integrated.profiles.linux": {
+          "bash": {
+            "path": "/bin/bash",
+            "args": ["-l"]
+          }
+        }
+      }
+    }
+  },
+
+  "forwardPorts": [
+    6600,
+    6680
+  ],
+  "portsAttributes": {
+    "6600": {
+      "label": "Mopidy MPD",
+      "onAutoForward": "notify"
+    },
+    "6680": {
+      "label": "Mopidy HTTP",
+      "onAutoForward": "openBrowser"
+    },
+    "8000": {
+      "label": "Dev Server",
+      "onAutoForward": "notify"
+    }
+  },
+  "remoteUser": "mopidy",
+  "postCreateCommand": ".devcontainer/post-create-command.sh",
+  "initializeCommand": ".devcontainer/initialize-command.sh || true"
+}

@@ -1,0 +1,24 @@
+{
+  "name": "mcp-servers",
+  "version": "1.0.0",
+  "description": "MCP servers for Dev Environment",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "postinstall": "echo 'MCP servers installed successfully'"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server-sequential-thinking": "2025.7.1",
+    "@modelcontextprotocol/server-memory": "2025.4.25",
+    "@upstash/context7-mcp": "1.0.14",
+    "web-search-mcp": "github:mrkrsl/web-search-mcp#v0.1.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.0.0"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol"
+  ]
+}
