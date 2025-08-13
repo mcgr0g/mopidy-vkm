@@ -1,10 +1,10 @@
 # mopidy-vkm
 
-[![Latest PyPI version](https://img.shields.io/pypi/v/mopidy-vkm)](https://pypi.org/p/mopidy-vkm)
 [![CI build status](https://img.shields.io/github/actions/workflow/status/mcgr0g/mopidy-vkm/ci.yml)](https://github.com/mcgr0g/mopidy-vkm/actions/workflows/ci.yml)
 [![Test coverage](https://img.shields.io/codecov/c/gh/mcgr0g/mopidy-vkm)](https://codecov.io/gh/mcgr0g/mopidy-vkm)
 
-Mopidy extension for vkm
+Mopidy extension for vkm.
+It enables secure playback of music from VKontakte (vk.com). The project provides a fully-featured backend, VK-aware library and playback providers, a minimal web login UI, and strict credential handling — all packaged for easy deployment via Docker Compose on a NAS.
 
 
 ## Installation

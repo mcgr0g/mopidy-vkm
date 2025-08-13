@@ -1,0 +1,50 @@
+
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# DevContainer specific exclusions
+.devcontainer/
+.vscode/
+node_modules/
+.git/
+*.log
+
+# Browser automation artifacts
+test-results/
+playwright-report/
+screenshots/
+videos/
+media/
+music/
+
+# Python tooling caches
+.venv/
+__pypackages__/
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+.pytype/
+coverage_html/
+htmlcov/
+
+# OS-specific
+.DS_Store
+Thumbs.db
