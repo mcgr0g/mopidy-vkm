@@ -5,6 +5,8 @@ from typing import Any
 
 from mopidy import backend
 
+from mopidy_vkm.auth import CredentialsManager, VKMAuthService
+
 logger = logging.getLogger(__name__)
 
 
@@ -18,6 +20,11 @@ class VKMBackend(backend.Backend):
         self.config = config["vkm"]
         self.audio = audio
 
-        # TODO: Initialize credentials manager
-        # TODO: Initialize auth service
-        # TODO: Initialize library and playback provider
+        # Initialize credentials manager
+        sensitive_cache_path = self.config["sensitive_cache_path"]
+        self.credentials_manager = CredentialsManager(sensitive_cache_path)
+
+        # Initialize auth service
+        self.auth_service = VKMAuthService(self.credentials_manager, self.config)
+
+        # TODO: Initialize library and playback provider  # noqa: FIX002
