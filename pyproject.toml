@@ -21,8 +21,8 @@ dependencies = [
 [project.urls]
 Homepage = "https://github.com/mcgr0g/mopidy-vkm"
 
-#[project.entry-points."mopidy.ext"]
-#vkm = "mopidy_vkm:Extension"
+[project.entry-points."mopidy.ext"]
+vkm = "mopidy_vkm:VKMExtension"
 
 [build-system]
 requires = ["setuptools >= 66", "setuptools-scm >= 7.1"]

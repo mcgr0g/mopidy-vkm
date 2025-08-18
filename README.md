@@ -25,9 +25,51 @@ mopidy-vkm to your Mopidy configuration file:
 
 ```ini
 [vkm]
-# TODO: Add example of extension config
+enabled = true
+# Optional: Specify a user agent string for VK API requests
+# If not specified, a random user agent will be selected
+user_agent =
+
+# Path to store sensitive credentials (tokens, etc.)
+# This file will be created with secure permissions (600)
+sensitive_cache_path = /var/lib/mopidy/vkm/sensitive.json
+
+# Optional: Path to cache downloaded tracks
+# If specified, tracks will be cached for offline playback
+cache_path = /var/lib/mopidy/vkm/cache
+
+# Optional: Path to save downloaded tracks permanently
+# If specified, tracks will be saved for future use
+saved_path = /var/lib/mopidy/vkm/saved
+
+# Optional: Audio quality (low, medium, high)
+# Default is medium
+quality = medium
 ```
 
+
+## Usage
+
+### Authentication
+
+1. Start Mopidy with the VKM extension enabled.
+2. Open a web browser and navigate to `http://your-mopidy-server:port/vkm`.
+3. Enter your VK login (email or phone) and password.
+4. If required, complete CAPTCHA or two-factor authentication.
+5. Once authenticated, you can use VK Music in Mopidy.
+
+### Features
+
+- **Browse**: Browse your VK music library, including saved tracks, playlists, and recommendations.
+- **Search**: Search for tracks, artists, and albums on VK.
+- **Playback**: Play tracks from VK with reliable streaming.
+- **Offline Mode**: If configured, tracks can be cached for offline playback.
+
+### Security
+
+- All sensitive data (tokens, credentials) is stored securely with strict file permissions.
+- Passwords are never stored, only authentication tokens.
+- User-Agent rotation helps prevent account locks.
 
 ## Project resources
 

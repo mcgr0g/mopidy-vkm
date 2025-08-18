@@ -1,6 +1,9 @@
 #!/bin/bash
 # setup audio for DevContainer
 
+# crutch for assembling with setuptools
+mkdir -p /tmp/egg_info
+
 echo "Setting up audio for DevContainer..."
 
 # PulseAudio exists check

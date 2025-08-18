@@ -1,0 +1,17 @@
+{
+    "workbench.colorTheme": "Solarized Light",
+    "terminal.integrated.allowedLinkSchemes": [
+        "file",
+        "https",
+        "vscode",
+        "vscode-insiders",
+        "docker-desktop"
+    ],
+    "editor.rulers": [
+        88
+    ],
+    "workbench.colorCustomizations": {
+        "editorRuler.foreground": "#d9e351"
+    },
+    "scm.workingSets.enabled": true
+}
