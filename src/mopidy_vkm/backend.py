@@ -1,11 +1,12 @@
-"""VKM backend"""
+"""VKM backend."""
 
 import logging
 from typing import Any
 
 from mopidy import backend
 
-from mopidy_vkm.auth import CredentialsManager, VKMAuthService
+from mopidy_vkm.auth import CredentialsManager
+from mopidy_vkm.auth.service import VKMAuthService
 
 logger = logging.getLogger(__name__)
 

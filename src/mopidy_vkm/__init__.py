@@ -33,8 +33,13 @@ class VKMExtension(Extension):
 
     def setup(self, registry: Registry) -> None:
         """Setup the extension."""
+        # Import here to avoid circular imports
         from mopidy_vkm.backend import VKMBackend
         from mopidy_vkm.web import create_web_app
 
         registry.add("backend", VKMBackend)
-        registry.add("http:app", {"name": self.ext_name, "factory": create_web_app})  # type: ignore  # noqa: PGH003
+        # Dict param needs type ignore
+        registry.add(
+            "http:app",
+            {"name": self.ext_name, "factory": create_web_app},  # type: ignore[arg-type]
+        )

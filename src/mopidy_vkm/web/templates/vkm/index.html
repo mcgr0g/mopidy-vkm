@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VK Music - Authentication</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #4a76a8; /* VK blue */
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4a76a8; /* VK blue */
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #3d6898;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .error {
+            color: #e53935;
+            margin-top: 10px;
+            text-align: center;
+        }
+        .success {
+            color: #43a047;
+            margin-top: 10px;
+            text-align: center;
+        }
+        .hidden {
+            display: none;
+        }
+        .status {
+            text-align: center;
+            margin-top: 20px;
+            font-weight: bold;
+        }
+        .captcha-container {
+            text-align: center;
+            margin-top: 15px;
+        }
+        .captcha-container img {
+            max-width: 100%;
+            margin-bottom: 10px;
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #4a76a8;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>VK Music Authentication</h1>
+
+        <!-- Login Form -->
+        <div id="login-form">
+            <div class="form-group">
+                <label for="login">Email or Phone:</label>
+                <input type="text" id="login" name="login" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <button id="login-button" type="button">Sign In</button>
+        </div>
+
+        <!-- Processing Indicator -->
+        <div id="processing" class="hidden">
+            <div class="spinner"></div>
+            <div class="status">Processing...</div>
+        </div>
+
+        <!-- Captcha Form -->
+        <div id="captcha-form" class="hidden">
+            <div class="captcha-container">
+                <img id="captcha-image" src="" alt="CAPTCHA">
+                <div class="form-group">
+                    <label for="captcha">Enter CAPTCHA:</label>
+                    <input type="text" id="captcha" name="captcha" required>
+                </div>
+                <button id="captcha-button" type="button">Submit</button>
+                <button id="captcha-cancel" type="button">Cancel</button>
+            </div>
+        </div>
+
+        <!-- Two-Factor Form -->
+        <div id="two-factor-form" class="hidden">
+            <div class="form-group">
+                <label for="code">Enter 2FA Code:</label>
+                <input type="text" id="code" name="code" required>
+            </div>
+            <button id="two-factor-button" type="button">Submit</button>
+            <button id="two-factor-cancel" type="button">Cancel</button>
+        </div>
+
+        <!-- Success Message -->
+        <div id="success" class="hidden">
+            <div class="success">Authentication successful!</div>
+            <div class="status">You can now use VK Music in Mopidy.</div>
+        </div>
+
+        <!-- Error Message -->
+        <div id="error" class="hidden">
+            <div class="error" id="error-message"></div>
+            <button id="error-retry" type="button">Try Again</button>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const loginForm = document.getElementById('login-form');
+        const processingIndicator = document.getElementById('processing');
+        const captchaForm = document.getElementById('captcha-form');
+        const twoFactorForm = document.getElementById('two-factor-form');
+        const successMessage = document.getElementById('success');
+        const errorContainer = document.getElementById('error');
+        const errorMessage = document.getElementById('error-message');
+        const captchaImage = document.getElementById('captcha-image');
+
+        // Buttons
+        const loginButton = document.getElementById('login-button');
+        const captchaButton = document.getElementById('captcha-button');
+        const captchaCancel = document.getElementById('captcha-cancel');
+        const twoFactorButton = document.getElementById('two-factor-button');
+        const twoFactorCancel = document.getElementById('two-factor-cancel');
+        const errorRetry = document.getElementById('error-retry');
+
+        // Input fields
+        const loginInput = document.getElementById('login');
+        const passwordInput = document.getElementById('password');
+        const captchaInput = document.getElementById('captcha');
+        const codeInput = document.getElementById('code');
+
+        // Variables
+        let captchaSid = '';
+        let pollingInterval = null;
+
+        // Show only the specified element and hide others
+        function showOnly(element) {
+            [loginForm, processingIndicator, captchaForm, twoFactorForm, successMessage, errorContainer].forEach(el => {
+                el.classList.add('hidden');
+            });
+            element.classList.remove('hidden');
+        }
+
+        // Start polling for status
+        function startPolling() {
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+            }
+
+            pollingInterval = setInterval(checkStatus, 1000);
+        }
+
+        // Stop polling
+        function stopPolling() {
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+                pollingInterval = null;
+            }
+        }
+
+        // Check authentication status
+        function checkStatus() {
+            fetch('/vkm/auth/status')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Status:', data);
+                    handleStatus(data);
+                })
+                .catch(error => {
+                    console.error('Error checking status:', error);
+                    showError('Failed to check authentication status.');
+                });
+        }
+
+        // Handle status response
+        function handleStatus(data) {
+            const status = data.status;
+
+            switch (status) {
+                case 'processing':
+                    showOnly(processingIndicator);
+                    break;
+
+                case 'captcha_required':
+                    captchaSid = data.captcha_sid;
+                    captchaImage.src = data.captcha_img;
+                    captchaInput.value = '';
+                    showOnly(captchaForm);
+                    stopPolling();
+                    break;
+
+                case '2fa_required':
+                    codeInput.value = '';
+                    showOnly(twoFactorForm);
+                    stopPolling();
+                    break;
+
+                case 'success':
+                    showOnly(successMessage);
+                    stopPolling();
+                    break;
+
+                case 'error':
+                    showError(data.error || 'Authentication failed.');
+                    stopPolling();
+                    break;
+
+                default:
+                    showError('Unknown status: ' + status);
+                    stopPolling();
+                    break;
+            }
+        }
+
+        // Show error message
+        function showError(message) {
+            errorMessage.textContent = message;
+            showOnly(errorContainer);
+        }
+
+        // Submit login
+        function submitLogin() {
+            const login = loginInput.value.trim();
+            const password = passwordInput.value;
+
+            if (!login || !password) {
+                showError('Please enter both login and password.');
+                return;
+            }
+
+            showOnly(processingIndicator);
+
+            fetch('/vkm/auth/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ login, password }),
+            })
+                .then(response => response.json())
+                .then(data => {
+                    handleStatus(data);
+                    startPolling();
+                })
+                .catch(error => {
+                    console.error('Error during login:', error);
+                    showError('Failed to start authentication process.');
+                });
+        }
+
+        // Submit captcha
+        function submitCaptcha() {
+            const captcha = captchaInput.value.trim();
+
+            if (!captcha) {
+                showError('Please enter the CAPTCHA text.');
+                return;
+            }
+
+            showOnly(processingIndicator);
+
+            fetch('/vkm/auth/verify', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ captcha }),
+            })
+                .then(response => response.json())
+                .then(data => {
+                    handleStatus(data);
+                    startPolling();
+                })
+                .catch(error => {
+                    console.error('Error submitting CAPTCHA:', error);
+                    showError('Failed to submit CAPTCHA.');
+                });
+        }
+
+        // Submit two-factor code
+        function submitTwoFactor() {
+            const code = codeInput.value.trim();
+
+            if (!code) {
+                showError('Please enter the 2FA code.');
+                return;
+            }
+
+            showOnly(processingIndicator);
+
+            fetch('/vkm/auth/verify', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ code }),
+            })
+                .then(response => response.json())
+                .then(data => {
+                    handleStatus(data);
+                    startPolling();
+                })
+                .catch(error => {
+                    console.error('Error submitting 2FA code:', error);
+                    showError('Failed to submit 2FA code.');
+                });
+        }
+
+        // Cancel authentication
+        function cancelAuth() {
+            showOnly(processingIndicator);
+
+            fetch('/vkm/auth/cancel', {
+                method: 'POST',
+            })
+                .then(response => response.json())
+                .then(data => {
+                    showOnly(loginForm);
+                })
+                .catch(error => {
+                    console.error('Error cancelling authentication:', error);
+                    showError('Failed to cancel authentication.');
+                });
+        }
+
+        // Event listeners
+        loginButton.addEventListener('click', submitLogin);
+        captchaButton.addEventListener('click', submitCaptcha);
+        captchaCancel.addEventListener('click', cancelAuth);
+        twoFactorButton.addEventListener('click', submitTwoFactor);
+        twoFactorCancel.addEventListener('click', cancelAuth);
+        errorRetry.addEventListener('click', () => showOnly(loginForm));
+
+        // Enter key support
+        loginInput.addEventListener('keypress', e => {
+            if (e.key === 'Enter') {
+                passwordInput.focus();
+            }
+        });
+
+        passwordInput.addEventListener('keypress', e => {
+            if (e.key === 'Enter') {
+                submitLogin();
+            }
+        });
+
+        captchaInput.addEventListener('keypress', e => {
+            if (e.key === 'Enter') {
+                submitCaptcha();
+            }
+        });
+
+        codeInput.addEventListener('keypress', e => {
+            if (e.key === 'Enter') {
+                submitTwoFactor();
+            }
+        });
+
+        // Check initial status
+        checkStatus();
+    </script>
+</body>
+</html>
