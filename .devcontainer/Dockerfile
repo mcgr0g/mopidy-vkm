@@ -9,6 +9,8 @@ RUN --mount=type=cache,target=/var/cache/apt \
     # base tools
     locales \
     curl \
+    jq \
+    unzip \
     git \
     build-essential \
     software-properties-common \
@@ -121,12 +123,43 @@ RUN asdf plugin add uv && \
     echo "=== npm version ===" && \
     npm --version
 
-# nodejs packages
+# nodejs packages, mcp servers
 COPY --chown=${USER_UID}:${USER_GID} package.json /home/mopidy/package.json
 RUN ([ -f package-lock.json ] && npm ci || npm install) && \
-    asdf reshim nodejs &&\
-    echo "=== mcp versions ===" && \
-    npm list --depth=0
+    asdf reshim nodejs
+
+# browsers
+RUN npm run playwright:install && asdf reshim nodejs
+
+ARG WEB_SEARCH_VERSION
+# web-search-mcp version resolve
+RUN mkdir -p /home/mopidy/.mcp-servers && \
+    cd /home/mopidy/.mcp-servers && \
+    if [ "$WEB_SEARCH_VERSION" = "latest" ]; then \
+        echo "🔍 Fetching latest release..."; \
+        RELEASE_DATA=$(curl -s https://api.github.com/repos/mrkrsl/web-search-mcp/releases/latest); \
+        VERSION=$(echo "$RELEASE_DATA" | jq -r '.tag_name'); \
+        DOWNLOAD_URL=$(echo "$RELEASE_DATA" | jq -r '.assets[] | select(.name | endswith(".zip")) | .browser_download_url'); \
+        echo "VERSION=$VERSION" > /tmp/web-search-version; \
+        echo "DOWNLOAD_URL=$DOWNLOAD_URL" > /tmp/web-search-url; \
+    else \
+        VERSION="$WEB_SEARCH_VERSION"; \
+        DOWNLOAD_URL="https://github.com/mrkrsl/web-search-mcp/releases/download/${VERSION}/web-search-mcp-${VERSION}.zip"; \
+        echo "VERSION=$VERSION" > /tmp/web-search-version; \
+        echo "DOWNLOAD_URL=$DOWNLOAD_URL" > /tmp/web-search-url; \
+    fi
+
+# web-search-mcp install
+RUN cd /home/mopidy/.mcp-servers && \
+    VERSION=$(cat /tmp/web-search-version | cut -d= -f2) && \
+    DOWNLOAD_URL=$(cat /tmp/web-search-url | cut -d= -f2) && \
+    echo "📦 Downloading web-search-mcp version: $VERSION" && \
+    curl -L -o web-search-mcp.zip "$DOWNLOAD_URL" && \
+    unzip web-search-mcp.zip -d web-search-mcp && \
+    rm web-search-mcp.zip && \
+    cd /home/mopidy/.mcp-servers/web-search-mcp && \
+    echo "📂 Contents:" && ls -la dist && \
+    echo "✅ web-search-mcp ready"
 
 # special check
 RUN python3 -c "import gi; gi.require_version('Gst', '1.0'); from gi.repository import Gst; print(Gst.init(None))" \
@@ -142,13 +175,11 @@ ENV PATH="/home/mopidy/.venv/bin:/home/mopidy/.local/bin:$HOME/.local/share/uv/t
 
 WORKDIR /workspace
 
-ARG WCGW_VERSION
 RUN --mount=type=bind,source=.,target=/workspace,rw \
     uv venv /home/mopidy/.venv --system-site-packages && \
     ls -la && \
     ls -la /home/mopidy && \
     uv pip install -e ".[dev]" && \
-    uv tool install wcgw${WCGW_VERSION:+==${WCGW_VERSION}} && \
     asdf reshim && \
     touch /home/mopidy/.gitconfig && \
     echo 'source /home/mopidy/.venv/bin/activate' >> ~/.bashrc

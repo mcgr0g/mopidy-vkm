@@ -14,11 +14,20 @@ if [ -f "/workspace/.devcontainer/user.zsh" ]; then
   cp /workspace/.devcontainer/user.zsh "$HOME/.oh-my-zsh/custom/devcontainer.zsh"
 fi
 
-git clone https://github.com/zsh-users/zsh-autosuggestions \
-    ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
+if [ ! -d "/home/mopidy/.oh-my-zsh/custom/plugins/zsh-autosuggestions" ]; then
+    git clone https://github.com/zsh-users/zsh-autosuggestions \
+        ~/.oh-my-zsh/custom/plugins/zsh-autosuggestions
+else
+    echo "⚠️ zsh-autosuggestions already installed, skipping..."
+fi
 
-git clone https://github.com/zsh-users/zsh-syntax-highlighting.git \
-    ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
+
+if [ ! -d "/home/mopidy/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting" ]; then
+    git clone https://github.com/zsh-users/zsh-syntax-highlighting.git \
+        ~/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting
+else
+    echo "⚠️ zsh-syntax-highlighting already installed, skipping..."
+fi
 
 echo "📦 Check asdf..."
 if asdf --version > /dev/null 2>&1; then
@@ -51,14 +60,6 @@ if python --version > /dev/null 2>&1; then
     echo "✅ Python installed: $(python --version)"
 else
     echo "❌ Python not found"
-    exit 1
-fi
-
-echo "📦 Check wcgw..."
-if command -v wcgw > /dev/null 2>&1; then
-    echo "wcgw installed: $(uv tool run wcgw --version)"
-else
-    echo "wcgw not found"
     exit 1
 fi
 

@@ -6,7 +6,7 @@ services:
       args:
         - USER_UID=${USER_UID:-1000}
         - USER_GID=${USER_GID:-1000}
-        - WCGW_VERSION=${WCGW_VERSION}
+        - WEB_SEARCH_VERSION=${WEB_SEARCH_VERSION:-latest}
     volumes:
       - ..:/workspace:cached
       - ~/.ssh:/home/mopidy/.ssh:ro

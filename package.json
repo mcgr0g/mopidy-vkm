@@ -5,7 +5,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "postinstall": "echo 'MCP servers installed successfully'"
+    "postinstall": "echo 'MCP servers installed successfully'",
+    "playwright:install": "npx playwright install",
+    "playwright:install-deps": "npx playwright install --with-deps"
   },
   "dependencies": {
     "@modelcontextprotocol/server-sequential-thinking": "2025.7.1",
@@ -15,7 +17,8 @@
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "playwright": "^1.55.0"
   },
   "keywords": [
     "mcp",

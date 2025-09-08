@@ -76,6 +76,36 @@
             "args": ["-l"]
           }
         }
+      },
+      "mcp": {
+        "servers": {
+          "context7": {
+            "command": "npx",
+            "args": ["@upstash/context7-mcp"]
+          },
+          "selenium": {
+            "command": "npx",
+            "args": ["@angiejones/mcp-selenium"],
+            "env": {
+              "SELENIUM_HUB_URL": "http://localhost:4444/wd/hub"
+            }
+          },
+          "web-search-mcp": {
+            "command": "node",
+            "args": ["/home/mopidy/.mcp-servers/web-search-mcp/dist/index.js"]
+          },
+          "sequential-thinking": {
+            "command": "server-sequential-thinking",
+            "args": ["@modelcontextprotocol/server-sequential-thinking"]
+          },
+          "memory": {
+            "command": "npx",
+            "args": ["@modelcontextprotocol/server-memory"],
+            "env": {
+              "MEMORY_FILE_PATH": "/home/mopidy/.mcp-data/memory/memory.json"
+            }
+          }
+        }
       }
     }
   },
@@ -100,5 +130,6 @@
   },
   "remoteUser": "mopidy",
   "postCreateCommand": ".devcontainer/post-create-command.sh",
-  "initializeCommand": ".devcontainer/initialize-command.sh || true"
+  "initializeCommand": ".devcontainer/initialize-command.sh || true",
+  "postStartCommand": ".devcontainer/post-start.sh"
 }
