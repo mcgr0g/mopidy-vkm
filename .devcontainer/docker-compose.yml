@@ -6,31 +6,32 @@ services:
       args:
         - USER_UID=${USER_UID:-1000}
         - USER_GID=${USER_GID:-1000}
-        - WEB_SEARCH_VERSION=${WEB_SEARCH_VERSION:-latest}
     volumes:
       - ..:/workspace:cached
       - ~/.ssh:/home/mopidy/.ssh:ro
       - ~/.gitconfig:/home/mopidy/.gitconfig:ro
-      - commandhistory:/commandhistory
-      - omz-data:/home/mopidy/.oh-my-zsh
-      - mopidy-data:/var/lib/mopidy
-      - asdf-cache:/home/mopidy/.asdf
-      - uv-cache:/home/mopidy/.cache/uv
+      - command-history:/commandhistory
       - uv-venv:/home/mopidy/.venv
-      - mcp-servers-cache:/home/mopidy/.mcp-servers
-      - mcp-data:/home/mopidy/.mcp-data
+      - js-tools-node-modules:/workspace/js-tools/node_modules
+      - vscode-server-storage:/home/mopidy/.vscode-server/data
+      - playwright-browsers:/workspace/.browsers
     tmpfs:
-      - /tmp:noexec,nosuid,size=100m
+      - /tmp:rw,size=100m,mode=1777
     environment:
       - PULSE_SERVER=tcp:host.docker.internal:4713
-      - DISPLAY=${DISPLAY:-:0}
       - USER_UID=${USER_UID:-1000}
       - USER_GID=${USER_GID:-1000}
       - HISTFILE=/commandhistory/.bash_history
+      - DISPLAY=:99
+      - PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=0
     network_mode: host
-    privileged: true
-    security_opt:
-      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+      # - DAC_OVERRIDE  # Для работы с /tmp/.X11-unix
     devices:
       - /dev/snd:/dev/snd
     user: mopidy
@@ -40,26 +41,17 @@ services:
     command: sleep infinity
 
 volumes:
-  commandhistory:
+  command-history:
     driver: local
 
-  mopidy-data:
+  js-tools-node-modules:
     driver: local
 
-  asdf-cache:
-    driver: local
+  playwright-browsers:
+      driver: local
 
-  uv-cache:
-    driver: local
-
-  mcp-servers-cache:
-    driver: local
-
-  mcp-data:
+  vscode-server-storage:
     driver: local
 
   uv-venv:
-    driver: local
-
-  omz-data:
     driver: local

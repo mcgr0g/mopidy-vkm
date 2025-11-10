@@ -4,10 +4,8 @@ SAVEHIST=10000
 setopt inc_append_history
 setopt share_history
 
-export ZSH="$HOME/.oh-my-zsh"
-source $ZSH/oh-my-zsh.sh
 export VIRTUAL_ENV_DISABLE_PROMPT=1
-ZSH_THEME="agnoster"
+ZSH_THEME="robbyrussell"
 plugins=(git zsh-syntax-highlighting zsh-autosuggestions virtualenv)
 
 fpath+=("$PWD")
@@ -25,3 +23,7 @@ fi
 if [[ -f "~/.venv/bin/activate" && -z "$VIRTUAL_ENV" ]]; then
   source ~/.venv/bin/activate
 fi
+
+# Ensure oh-my-zsh is always loaded in interactive shells
+export ZSH="$HOME/.oh-my-zsh"
+source $ZSH/oh-my-zsh.sh

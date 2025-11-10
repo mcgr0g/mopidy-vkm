@@ -48,7 +48,64 @@ RUN --mount=type=cache,target=/var/cache/apt \
     gir1.2-gst-plugins-base-1.0 \
     # audio deps
     pulseaudio \
-    alsa-utils
+    alsa-utils \
+    # X11 and display deps for Playwright UI mode
+    ffmpeg \
+    xvfb \
+    x11vnc \
+    x11-xserver-utils \
+    xauth \
+    x11-apps \
+    # Playwright browser dependencies
+    libnss3 \
+    libatk-bridge2.0-0 \
+    libdrm2 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxrandr2 \
+    libgbm1 \
+    libxss1 \
+    libasound2 \
+    fonts-noto-color-emoji \
+    fonts-wqy-zenhei \
+    fonts-freefont-ttf \
+    fonts-tlwg-loma-otf \
+    xfonts-encodings \
+    fonts-ipafont-gothic \
+    fonts-unifont \
+    xfonts-utils \
+    xfonts-scalable \
+    # Additional libs for browsers
+    fonts-liberation \
+    libappindicator3-1 \
+    libasound2 \
+    libatk1.0-0 \
+    libc6 \
+    libcairo2 \
+    libcups2 \
+    libdbus-1-3 \
+    libexpat1 \
+    libfontconfig1 \
+    libgcc1 \
+    libgconf-2-4 \
+    libgdk-pixbuf2.0-0 \
+    libglib2.0-0 \
+    libgtk-3-0 \
+    libnspr4 \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libstdc++6 \
+    libx11-6 \
+    libx11-xcb1 \
+    libxcb1 \
+    libxcursor1 \
+    libxfixes3 \
+    libxi6 \
+    libxrender1 \
+    libxext6 \
+    libxft2 \
+    libxinerama1 \
+    libxtst6
 
 RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && \
     locale-gen && \
@@ -67,20 +124,23 @@ RUN curl -OL https://dl.google.com/go/go${GO_VERSION}.linux-${GO_ARCH}.tar.gz &&
 ARG USER_UID=1000
 ARG USER_GID=1000
 RUN groupadd --gid $USER_GID mopidy && \
-    useradd --uid $USER_UID --gid $USER_GID -m -s /bin/bash mopidy && \
+    useradd --uid $USER_UID --gid $USER_GID -m -s /bin/zsh mopidy && \
     echo "mopidy ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers && \
-    mkdir -p /var/lib/mopidy \
+    mkdir -p \
+        /var/lib/mopidy \
+        /workspace/.mcp-data/memory \
+        /workspace/.browsers \
+        /workspace/.recordings \
+        /tmp/egg_info \
+        /home/mopidy/.vscode-server/data/Machine \
+        /home/mopidy/.vscode-server/bin \
+        /commandhistory && \
+    chown -R mopidy:mopidy \
+        /var/lib/mopidy \
         /workspace \
         /tmp/egg_info \
-        /commandhistory \
-        /home/mopidy/.mcp-servers \
-        /home/mopidy/.mcp-data/memory && \
-    chown -R mopidy:mopidy /var/lib/mopidy \
-        /workspace \
-        /tmp/egg_info \
-        /commandhistory \
-        /home/mopidy/.mcp-servers \
-        /home/mopidy/.mcp-data && \
+        /home/mopidy/.vscode-server \
+        /commandhistory && \
     touch /commandhistory/.bash_history && \
     git config --global --add safe.directory /workspace
 
@@ -96,7 +156,16 @@ ENV PATH="/home/mopidy/.asdf/bin:/home/mopidy/.asdf/shims:/usr/local/go/bin:/hom
     HISTSIZE=10000 \
     HISTFILESIZE=20000 \
     PROMPT_COMMAND="history -a; history -c; history -r" \
-    ZSH_ALREADY_INSTALLED=true
+    ZSH_ALREADY_INSTALLED=true \
+    # Playwright environment variables
+    PLAYWRIGHT_BROWSERS_PATH=/workspace/.browsers \
+    PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=0 \
+    # Display configuration
+    DISPLAY=:99 \
+    XVFB_WHD=1920x1080x24
+
+RUN curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | \
+    sh -s -- --unattended --keep-zshrc || true
 
 RUN go version && \
     go install github.com/asdf-vm/asdf/cmd/asdf@v0.18.0 && \
@@ -124,42 +193,21 @@ RUN asdf plugin add uv && \
     npm --version
 
 # nodejs packages, mcp servers
-COPY --chown=${USER_UID}:${USER_GID} package.json /home/mopidy/package.json
+WORKDIR /workspace/js-tools
+COPY --chown=${USER_UID}:${USER_GID} js-tools/package*.json ./
+# install strategy: from lock if exist, otherwise from package
 RUN ([ -f package-lock.json ] && npm ci || npm install) && \
-    asdf reshim nodejs
+    echo "🔄 Reshimming asdf..." && \
+    asdf reshim nodejs && \
+    echo "✅ Reshim complete" && \
+    ln -sf /workspace/js-tools/node_modules /workspace/node_modules
 
 # browsers
-RUN npm run playwright:install && asdf reshim nodejs
-
-ARG WEB_SEARCH_VERSION
-# web-search-mcp version resolve
-RUN mkdir -p /home/mopidy/.mcp-servers && \
-    cd /home/mopidy/.mcp-servers && \
-    if [ "$WEB_SEARCH_VERSION" = "latest" ]; then \
-        echo "🔍 Fetching latest release..."; \
-        RELEASE_DATA=$(curl -s https://api.github.com/repos/mrkrsl/web-search-mcp/releases/latest); \
-        VERSION=$(echo "$RELEASE_DATA" | jq -r '.tag_name'); \
-        DOWNLOAD_URL=$(echo "$RELEASE_DATA" | jq -r '.assets[] | select(.name | endswith(".zip")) | .browser_download_url'); \
-        echo "VERSION=$VERSION" > /tmp/web-search-version; \
-        echo "DOWNLOAD_URL=$DOWNLOAD_URL" > /tmp/web-search-url; \
-    else \
-        VERSION="$WEB_SEARCH_VERSION"; \
-        DOWNLOAD_URL="https://github.com/mrkrsl/web-search-mcp/releases/download/${VERSION}/web-search-mcp-${VERSION}.zip"; \
-        echo "VERSION=$VERSION" > /tmp/web-search-version; \
-        echo "DOWNLOAD_URL=$DOWNLOAD_URL" > /tmp/web-search-url; \
-    fi
-
-# web-search-mcp install
-RUN cd /home/mopidy/.mcp-servers && \
-    VERSION=$(cat /tmp/web-search-version | cut -d= -f2) && \
-    DOWNLOAD_URL=$(cat /tmp/web-search-url | cut -d= -f2) && \
-    echo "📦 Downloading web-search-mcp version: $VERSION" && \
-    curl -L -o web-search-mcp.zip "$DOWNLOAD_URL" && \
-    unzip web-search-mcp.zip -d web-search-mcp && \
-    rm web-search-mcp.zip && \
-    cd /home/mopidy/.mcp-servers/web-search-mcp && \
-    echo "📂 Contents:" && ls -la dist && \
-    echo "✅ web-search-mcp ready"
+RUN npm run playwright:install-deps && \
+    echo "=== Playwright browsers installed ===" && \
+    npm playwright --version && \
+    asdf reshim nodejs && \
+    ls -la /workspace/.browsers
 
 # special check
 RUN python3 -c "import gi; gi.require_version('Gst', '1.0'); from gi.repository import Gst; print(Gst.init(None))" \
@@ -171,7 +219,8 @@ ENV PATH="/home/mopidy/.venv/bin:/home/mopidy/.local/bin:$HOME/.local/share/uv/t
     PYTHONPATH="/usr/lib/python3/dist-packages:${PYTHONPATH}" \
     UV_LINK_MODE="copy" \
     UV_PROJECT_ENVIRONMENT="/home/mopidy/.venv" \
-    ZSH_ALREADY_INSTALLED=true
+    ZSH_ALREADY_INSTALLED=true \
+    JUST_TEMPDIR="/home/mopidy/.cache/just-tmp"
 
 WORKDIR /workspace
 
@@ -185,5 +234,7 @@ RUN --mount=type=bind,source=.,target=/workspace,rw \
     echo 'source /home/mopidy/.venv/bin/activate' >> ~/.bashrc
 
 COPY --chown=${USER_UID}:${USER_GID} .devcontainer/project.zshrc /home/mopidy/.zshrc
+
+COPY . .
 
 CMD ["sleep", "infinity"]

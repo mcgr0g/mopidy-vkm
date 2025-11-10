@@ -4,30 +4,10 @@ set -e
 
 echo "🚀 Setting up mopidy-vkm development environment with MCP support..."
 
-# crutch for assembling with setuptools
-mkdir -p /tmp/egg_info
-
-mkdir -p $HOME/.oh-my-zsh/custom/plugins
-
-# for your alias and configs
-if [ -f "/workspace/.devcontainer/user.zsh" ]; then
-  cp /workspace/.devcontainer/user.zsh "$HOME/.oh-my-zsh/custom/devcontainer.zsh"
-fi
-
-if [ ! -d "/home/mopidy/.oh-my-zsh/custom/plugins/zsh-autosuggestions" ]; then
-    git clone https://github.com/zsh-users/zsh-autosuggestions \
-        ~/.oh-my-zsh/custom/plugins/zsh-autosuggestions
-else
-    echo "⚠️ zsh-autosuggestions already installed, skipping..."
-fi
-
-
-if [ ! -d "/home/mopidy/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting" ]; then
-    git clone https://github.com/zsh-users/zsh-syntax-highlighting.git \
-        ~/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting
-else
-    echo "⚠️ zsh-syntax-highlighting already installed, skipping..."
-fi
+echo "🔧 Current user: $(whoami)"
+echo "🔧 Current UID: $(id -u)"
+echo "🔧 Current GID: $(id -g)"
+echo "🔧 Current dir: $(pwd)"
 
 echo "📦 Check asdf..."
 if asdf --version > /dev/null 2>&1; then
@@ -43,15 +23,6 @@ if uv --version > /dev/null 2>&1; then
     echo "✅ UV installed: $(uv --version)"
 else
     echo "❌ UV not found"
-    exit 1
-fi
-
-echo "📦 Check Node.js..."
-if node --version > /dev/null 2>&1; then
-    echo "✅ Node.js installed: $(node --version)"
-    echo "✅ npm installed: $(npm --version)"
-else
-    echo "❌ Node.js not found"
     exit 1
 fi
 
@@ -77,6 +48,15 @@ else
     echo "⚠️ GStreamer not found"
 fi
 
+echo "📦 Check Node.js..."
+cd /workspace/js-tools
+echo "📦 Node.js environment:"
+node --version
+npm --version
+npm root
+
+echo "🎭 Check Playwright..."
+npx playwright --version || echo "⚠️ Playwright not found"
 
 echo "📦 Synchronizing Python dependencies..."
 uv sync || {

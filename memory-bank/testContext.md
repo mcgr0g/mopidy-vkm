@@ -72,8 +72,8 @@ For complete system validation, manual E2E testing is required:
 
 1. **E2E Test with Real VK Account**
    - Place test account credentials in root `.env` file:
-     - `TEST_USER_LOGIN`
-     - `TEST_USER_PASSWORD`
+     - `VK_TEST_LOGIN`
+     - `VK_TEST_PASSWORD`
    - Start the Mopidy server with the VKM extension
    - Open `/vkm` in a browser
    - Enter credentials from `.env` (manually or via test harness)

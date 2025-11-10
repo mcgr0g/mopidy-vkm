@@ -1,0 +1,43 @@
+{
+  "name": "mcp-servers",
+  "version": "1.0.0",
+  "description": "MCP servers for Dev Environment",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "postinstall": "echo 'MCP servers installed successfully'",
+    "playwright:install": "npx playwright install",
+    "playwright:install-deps": "npx playwright install --with-deps",
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:headless": "playwright test --headless",
+    "test:debug": "playwright test --debug",
+    "test:ui": "playwright test --ui --ui-port 8080",
+    "test:auth": "playwright test tests/e2e/auth.spec.js",
+    "test:auth:headed": "playwright test tests/e2e/auth.spec.js --headed",
+    "test:auth:debug": "playwright test tests/e2e/auth.spec.js --debug",
+    "test:record": "playwright codegen",
+    "test:report": "playwright show-report",
+    "xvfb:start": "Xvfb :99 -screen 0 1920x1080x24 -ac +extension GLX +render -noreset -nolisten tcp &",
+    "xvfb:stop": "pkill Xvfb || true",
+    "display:test": "DISPLAY=:99 xdpyinfo | head -20"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server-sequential-thinking": "2025.7.1",
+    "@modelcontextprotocol/server-memory": "2025.4.25",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@upstash/context7-mcp": "1.0.14",
+    "@executeautomation/playwright-mcp-server": "1.0.6"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.0.0",
+    "@playwright/test": "^1.56.0",
+    "dotenv": "^16.0.0"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "playwright"
+  ]
+}

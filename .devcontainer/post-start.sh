@@ -1,9 +1,6 @@
 #!/bin/bash
 set -euo pipefail
 
-# crutch for assembling with setuptools
-mkdir -p /tmp/egg_info
-
 echo "🔄 Syncing cline mcp settigns from devcontainer settings"
 
 # SOURCE: файл с твоими серверами
@@ -71,4 +68,38 @@ fi
 
 # Очистка
 rm -f "$temp_source"
+
+# 🖥️ Setup Xvfb (VIRTUAL X SERVER), prereq for playwright-mcp
+echo "🖥️ Setting up display server..."
+if ! pgrep -x "Xvfb" > /dev/null; then
+    echo "Starting Xvfb virtual display server on :99..."
+    Xvfb :99 -screen 0 1920x1080x24 -ac +extension GLX +render -noreset -nolisten tcp &
+    export DISPLAY=:99
+    sleep 2
+    echo "✅ Xvfb started on display :99"
+else
+    echo "✅ Xvfb already running"
+fi
+
+# Test display
+echo "🧪 Testing virtual display..."
+if DISPLAY=:99 xdpyinfo > /dev/null 2>&1; then
+    echo "✅ Display :99 is working"
+else
+    echo "⚠️ Warning: Display test failed"
+fi
+
+# Проверяем установку браузеров
+if [ -d "/workspace/.browsers" ] && [ "$(ls -A /workspace/.browsers 2>/dev/null)" ]; then
+    echo "✅ Playwright browsers are installed"
+else
+    echo "⚠️ Playwright browsers not found - will be installed on first test run"
+fi
+
+echo "🎭 Playwright environment ready!"
+echo "🤖 With Cline MCP you can now use commands like:"
+echo "  'Cline, run VK authentication test in headed mode'"
+echo "  'Cline, take a screenshot of the login page'"
+echo ""
+
 exit 0

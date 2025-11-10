@@ -1,8 +1,12 @@
-# prereq
-golang https://go.dev/doc/install
-asdf https://asdf-vm.com/
+# in devcontainer
+just run 'Reopen in container'
 
-# after clone
+# on debian based os
+there are some prereq:
+  - golang https://go.dev/doc/install
+  - asdf https://asdf-vm.com/
+
+## after clone
 ```sh
 # for local development
 asdf current
@@ -27,11 +31,6 @@ if [[ -f "$PWD/.just.zsh-completion" ]]; then
 fi
 ```
 
-# for devcontainer
-just run 'Reopen in container'
-
-in devcontainer you have to run `source ~/.zshrc` if you want use zsh.
-
 ## tox
 https://github.com/tox-dev/tox-uv
 
@@ -45,7 +44,7 @@ tox
 uv tree
 ```
 
-# after changes
+## after changes
 ```sh
 uv run ruff format .
 uv run ruff check . --fix

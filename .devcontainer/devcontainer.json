@@ -6,12 +6,6 @@
   "shutdownAction": "stopCompose",
 
   "features": {
-    "ghcr.io/devcontainers/features/common-utils:latest": {
-      "installZsh": true,
-      "installOhMyZsh": true,
-      "installOhMyZshConfig": false,
-      "configureZshAsDefaultShell": true
-    }
   },
 
   "customizations": {
@@ -25,7 +19,8 @@
         "streetsidesoftware.code-spell-checker",
         "streetsidesoftware.code-spell-checker-cspell-bundled-dictionaries",
         "saoudrizwan.claude-dev",
-        "nefrob.vscode-just-syntax"
+        "nefrob.vscode-just-syntax",
+        "ms-playwright.playwright"
       ],
       "settings": {
         "python.defaultInterpreterPath": "/home/mopidy/.venv/bin/python",
@@ -34,11 +29,13 @@
         "ruff.organizeImports": true,
         "python.testing.pytestEnabled": true,
         "python.testing.unittestEnabled": false,
-        "cline.mcpConfigPath": "/workspace/.vscode/mcp.json",
         "files.watcherExclude": {
           "**/.tox/**": true,
           "**/.venv/**": true,
-          "**/.mcp-servers/**": true
+          "**/node_modules": true,
+          "**/.mcp-servers/**": true,
+          "**/test-results/**": true,
+          "**/playwright-report/**": true
         },
         "cSpell.dictionaries": [
           "en",
@@ -55,8 +52,7 @@
           "mopidy",
           "asdf",
           "mcp",
-          "cline",
-          "wcgw"
+          "cline"
         ],
         "cSpell.ignorePaths": [
           ".venv/**",
@@ -69,59 +65,55 @@
         ],
         "go.gopath": "/home/mopidy/go",
         "go.goroot": "/usr/lib/go",
-        "terminal.integrated.defaultProfile.linux": "bash",
+        "terminal.integrated.defaultProfile.linux": "zsh",
         "terminal.integrated.profiles.linux": {
-          "bash": {
-            "path": "/bin/bash",
-            "args": ["-l"]
-          }
-        }
+          "zsh": {
+                "path": "/bin/zsh",
+                "args": ["--login", "--interactive"]
+            }
+        },
+        "playwright.testDir": "tests/e2e"
       },
       "mcp": {
         "servers": {
           "context7": {
             "command": "npx",
-            "args": ["@upstash/context7-mcp"]
-          },
-          "selenium": {
-            "command": "npx",
-            "args": ["@angiejones/mcp-selenium"],
-            "env": {
-              "SELENIUM_HUB_URL": "http://localhost:4444/wd/hub"
-            }
-          },
-          "web-search-mcp": {
-            "command": "node",
-            "args": ["/home/mopidy/.mcp-servers/web-search-mcp/dist/index.js"]
+            "args": ["@upstash/context7-mcp"],
+            "cwd": "/workspace/js-tools"
           },
           "sequential-thinking": {
-            "command": "server-sequential-thinking",
-            "args": ["@modelcontextprotocol/server-sequential-thinking"]
+            "command": "npx",
+            "args": ["@modelcontextprotocol/server-sequential-thinking"],
+            "cwd": "/workspace/js-tools"
           },
           "memory": {
             "command": "npx",
             "args": ["@modelcontextprotocol/server-memory"],
+            "cwd": "/workspace/js-tools",
             "env": {
-              "MEMORY_FILE_PATH": "/home/mopidy/.mcp-data/memory/memory.json"
+              "MEMORY_FILE_PATH": "/workspace/.mcp-data/memory/memory.json"
             }
-          }
+          },
+          "playwright": {
+              "command": "npx",
+              "args": [
+                "@executeautomation/playwright-mcp-server"
+              ],
+              "cwd": "/workspace/js-tools",
+              "env": {
+                "DISPLAY": ":99"
+              }
+            }
         }
       }
     }
   },
 
-  "forwardPorts": [
-    6600,
-    6680
-  ],
+  "forwardPorts": [6600, 6680],
   "portsAttributes": {
     "6600": {
       "label": "Mopidy MPD",
       "onAutoForward": "notify"
-    },
-    "6680": {
-      "label": "Mopidy HTTP",
-      "onAutoForward": "openBrowser"
     },
     "8000": {
       "label": "Dev Server",
@@ -129,6 +121,7 @@
     }
   },
   "remoteUser": "mopidy",
+  "onCreateCommand": ".devcontainer/on-create-command.sh",
   "postCreateCommand": ".devcontainer/post-create-command.sh",
   "initializeCommand": ".devcontainer/initialize-command.sh || true",
   "postStartCommand": ".devcontainer/post-start.sh"

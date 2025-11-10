@@ -1,14 +1,22 @@
-*.egg-info
-.tox
-.venv
+*.egg-info/
+.tox/
+.venv/
 build
 target
 __pycache__
 *.pyc
-.pytest_cache
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 logs/
+
+# Node.js
+js-tools/node_modules/
+node_modules/
 
 # project specific
 .asdf/
 .uv/
 .mcp/
+.browsers/
+.recordings/

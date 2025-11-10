@@ -29,6 +29,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+node_modules
 
 # IDE
 .vscode/launch.json
@@ -38,6 +39,9 @@ venv.bak/
 *.swp
 *.swo
 *~
+
+# Node.js
+js-tools/node_modules/
 
 # OS
 .DS_Store
@@ -76,3 +80,5 @@ mopidy.conf
 .mcp/
 docker-cache/
 *.zsh
+.browsers/
+.recordings/

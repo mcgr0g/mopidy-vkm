@@ -20,6 +20,9 @@ wheels/
 *.egg
 MANIFEST
 
+# Dependencies
+js-tools/node_modules/
+
 # DevContainer specific exclusions
 .devcontainer/
 .vscode/
@@ -48,3 +51,6 @@ htmlcov/
 # OS-specific
 .DS_Store
 Thumbs.db
+
+.browsers/
+.recordings/

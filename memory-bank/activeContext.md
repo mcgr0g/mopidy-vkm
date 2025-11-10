@@ -32,8 +32,8 @@
 - **Goal:** Verify the complete authentication flow with a real VK account
 - **Steps:**
   1. Place test account credentials in root `.env` file under:
-     - `TEST_USER_LOGIN`
-     - `TEST_USER_PASSWORD`
+     - `VK_TEST_LOGIN`
+     - `VK_TEST_PASSWORD`
   2. Open `/vkm` in browser.
   3. Enter the credentials from `.env` (either manually or via test harness).
   4. If prompted, complete captcha or 2FA step.
