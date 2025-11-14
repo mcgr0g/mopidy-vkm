@@ -109,7 +109,7 @@
     }
   },
 
-  "forwardPorts": [6600, 6680],
+  "forwardPorts": [6600],
   "portsAttributes": {
     "6600": {
       "label": "Mopidy MPD",

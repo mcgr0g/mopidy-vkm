@@ -24,19 +24,8 @@ MANIFEST
 js-tools/node_modules/
 
 # DevContainer specific exclusions
-.devcontainer/
 .vscode/
 node_modules/
-.git/
-*.log
-
-# Browser automation artifacts
-test-results/
-playwright-report/
-screenshots/
-videos/
-media/
-music/
 
 # Python tooling caches
 .venv/
@@ -51,6 +40,3 @@ htmlcov/
 # OS-specific
 .DS_Store
 Thumbs.db
-
-.browsers/
-.recordings/

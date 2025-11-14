@@ -46,6 +46,11 @@ RUN --mount=type=cache,target=/var/cache/apt \
     python3-gst-1.0 \
     gir1.2-gstreamer-1.0 \
     gir1.2-gst-plugins-base-1.0 \
+    # debug tools
+    net-tools \
+    lsof \
+    iproute2 \
+    psmisc \
     # audio deps
     pulseaudio \
     alsa-utils \
