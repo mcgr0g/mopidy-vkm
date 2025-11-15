@@ -1,0 +1,50 @@
+# DevContainer Configuration Context
+
+## Port Configuration Solution
+
+### Current Setup
+The devcontainer uses bridge networking to resolve port conflicts between VS Code and Mopidy.
+
+### Key Configuration Files
+
+#### `.devcontainer/docker-compose.yml`
+```yaml
+ports:
+  - "6600:6600"  # MPD protocol
+  - "6680:6680"  # HTTP interface
+networks:
+  - mopidy-network
+
+networks:
+  mopidy-network:
+    driver: bridge
+```
+
+#### `.devcontainer/devcontainer.json`
+```json
+{
+  "forwardPorts": [6600, 6680],
+  "portsAttributes": {
+    "6600": {"label": "Mopidy MPD", "onAutoForward": "notify"},
+    "6680": {"label": "Mopidy HTTP", "onAutoForward": "notify"}
+  }
+}
+```
+
+#### `mopidy.conf`
+```ini
+[http]
+port = 6680
+hostname = 0.0.0.0
+```
+
+### Access URLs
+- **Mopidy HTTP**: http://localhost:6680
+- **Mopidy MPD**: localhost:6600
+- **VKM Extension**: http://localhost:6680/vkm/
+
+### Important Notes
+- Bridge networking provides port isolation
+- VS Code automatically handles port forwarding
+- Standard Mopidy configuration (port 6680) is used
+- Devcontainer rebuild required for changes to take effect

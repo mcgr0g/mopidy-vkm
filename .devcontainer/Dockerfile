@@ -19,6 +19,7 @@ RUN --mount=type=cache,target=/var/cache/apt \
     lsb-release \
     sudo \
     zsh \
+    ssh \
     # Python deps
     libssl-dev \
     zlib1g-dev \

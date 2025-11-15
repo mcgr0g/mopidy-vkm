@@ -28,3 +28,7 @@
 ---
 
 **Note:** Avoid running these tools directly with `python -m` or using globally installed versions to prevent environment inconsistencies.
+
+## DevContainer Configuration
+
+See [devcontainerConfigContext.md](devcontainerConfigContext.md) for specific port configuration details and networking setup.

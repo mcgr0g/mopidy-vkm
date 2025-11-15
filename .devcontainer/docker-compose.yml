@@ -6,8 +6,8 @@ services:
       args:
         - USER_UID=${USER_UID:-1000}
         - USER_GID=${USER_GID:-1000}
-    mem_limit: 4g
-    memswap_limit: 4g
+    mem_limit: 6g
+    memswap_limit: 6g
     volumes:
       - ..:/workspace:cached
       - ~/.ssh:/home/mopidy/.ssh:ro
@@ -26,7 +26,11 @@ services:
       - HISTFILE=/commandhistory/.bash_history
       - DISPLAY=:99
       - PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=0
-    network_mode: host
+    ports:
+      - "6600:6600"
+      - "6680:6680"
+    networks:
+      - mopidy-network
     cap_drop:
       - ALL
     cap_add:
@@ -57,3 +61,7 @@ volumes:
 
   uv-venv:
     driver: local
+
+networks:
+  mopidy-network:
+    driver: bridge

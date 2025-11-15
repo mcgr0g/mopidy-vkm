@@ -3,6 +3,7 @@
 import logging
 from typing import Any
 
+import pykka
 from mopidy import backend
 
 from mopidy_vkm.auth import CredentialsManager
@@ -11,7 +12,7 @@ from mopidy_vkm.auth.service import VKMAuthService
 logger = logging.getLogger(__name__)
 
 
-class VKMBackend(backend.Backend):
+class VKMBackend(pykka.ThreadingActor, backend.Backend):
     """VKM backend with TokenReceiver authentication."""
 
     def __init__(self, config: dict[str, Any], audio: object) -> None:

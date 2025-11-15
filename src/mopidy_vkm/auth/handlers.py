@@ -26,6 +26,7 @@ class AuthHandlers:
         self._captcha_solution: str = ""
         self._two_factor_code: str = ""
         self._auth_lock = threading.Lock()
+        self._wait_event = threading.Event()  # Persistent event for waiting
 
     def captcha_handler(self, *args: object, **kwargs: object) -> str:
         """Handle captcha request from TokenReceiver.
@@ -38,7 +39,7 @@ class AuthHandlers:
         - captcha_sid=sid, captcha_img=img as kwargs
 
         Returns:
-            The captcha solution (will be provided by the user).
+            The captcha solution (will be provided by user).
         """
         # Try to extract captcha details from various argument patterns
         captcha_sid = None
@@ -55,7 +56,7 @@ class AuthHandlers:
             if isinstance(args[0], str):
                 captcha_sid = args[0]
             elif hasattr(args[0], "sid") and not isinstance(args[0], str):
-                # Access the attribute directly
+                # Access attribute directly
                 captcha_sid = args[0].sid  # type: ignore[attr-defined]
 
         if captcha_img is None and len(args) > 1:
@@ -75,9 +76,9 @@ class AuthHandlers:
             self.captcha_img = str(captcha_img) if captcha_img else None
             logger.info("Captcha required: %s", self.captcha_img)
 
-        # Wait for the captcha solution
+        # Wait for the captcha solution using the persistent event
         while self.status == AuthStatus.CAPTCHA_REQUIRED:
-            threading.Event().wait(0.5)
+            self._wait_event.wait(0.5)
 
         # Return the solution or raise an exception if authentication was cancelled
         auth_cancelled_msg = "Authentication cancelled"
@@ -96,9 +97,9 @@ class AuthHandlers:
             self.status = AuthStatus.TWO_FACTOR_REQUIRED
             logger.info("Two-factor authentication required")
 
-        # Wait for the two-factor code
+        # Wait for the two-factor code using the persistent event
         while self.status == AuthStatus.TWO_FACTOR_REQUIRED:
-            threading.Event().wait(0.5)
+            self._wait_event.wait(0.5)
 
         # Return the code or raise an exception if authentication was cancelled
         auth_cancelled_msg = "Authentication cancelled"
@@ -120,6 +121,8 @@ class AuthHandlers:
 
             self._captcha_solution = captcha_solution
             self.status = AuthStatus.PROCESSING
+            # Wake up any waiting threads
+            self._wait_event.set()
             logger.info("Captcha solution submitted")
 
     def submit_two_factor(self, two_factor_code: str) -> None:
@@ -135,6 +138,8 @@ class AuthHandlers:
 
             self._two_factor_code = two_factor_code
             self.status = AuthStatus.PROCESSING
+            # Wake up any waiting threads
+            self._wait_event.set()
             logger.info("Two-factor code submitted")
 
     def cancel_auth(self) -> None:
@@ -147,13 +152,15 @@ class AuthHandlers:
             ):
                 self.status = AuthStatus.ERROR
                 self.error_message = "Authentication cancelled by user"
+                # Wake up any waiting threads
+                self._wait_event.set()
                 logger.info("Authentication cancelled by user")
 
 
 def get_handler_methods(
     handlers: AuthHandlers,
 ) -> tuple[Callable[..., str], Callable[..., str]]:
-    """Get the handler methods from the AuthHandlers instance.
+    """Get handler methods from the AuthHandlers instance.
 
     Args:
         handlers: The AuthHandlers instance.

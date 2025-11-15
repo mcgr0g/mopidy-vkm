@@ -109,10 +109,14 @@
     }
   },
 
-  "forwardPorts": [6600],
+  "forwardPorts": [6600, 6680],
   "portsAttributes": {
     "6600": {
       "label": "Mopidy MPD",
+      "onAutoForward": "notify"
+    },
+    "6680": {
+      "label": "Mopidy HTTP",
       "onAutoForward": "notify"
     },
     "8000": {
