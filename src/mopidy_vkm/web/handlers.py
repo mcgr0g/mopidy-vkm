@@ -93,34 +93,43 @@ class BaseHandler(RequestHandler):
                             logger.debug(
                                 "Found VKM backend at index %d by uri_schemes", i
                             )
-                            # Try to access auth_service through proxy
+                            # Try to access auth_service - get the real backend first
                             try:
-                                auth_service_future = cast(
-                                    "Any", backend_proxy
-                                ).auth_service
+                                backend = backend_proxy.get()
                                 logger.debug(
-                                    "Auth service future type: %s",
-                                    type(auth_service_future).__name__,
+                                    "Got real backend: %s",
+                                    type(backend).__name__,
                                 )
-                                if hasattr(auth_service_future, "get"):
-                                    auth_service = auth_service_future.get()
+                                auth_service = getattr(backend, "auth_service", None)
+                                if auth_service:
                                     logger.debug(
                                         "Got auth_service: %s",
                                         type(auth_service).__name__,
                                     )
                                     return auth_service
-                                else:
-                                    return auth_service_future
                             except Exception as e:
                                 logger.debug(
                                     "Failed to access auth_service through proxy: %s", e
                                 )
-                                # Try getting the real backend
+                                # Try direct proxy access as fallback
                                 try:
-                                    backend = backend_proxy.get()
-                                    return backend.auth_service
+                                    auth_service_future = cast(
+                                        "Any", backend_proxy
+                                    ).auth_service
+                                    logger.debug(
+                                        "Auth service future type: %s",
+                                        type(auth_service_future).__name__,
+                                    )
+                                    if hasattr(auth_service_future, "get"):
+                                        auth_service = auth_service_future.get()
+                                        logger.debug(
+                                            "Got auth_service via future: %s",
+                                            type(auth_service).__name__,
+                                        )
+                                        return auth_service
+                                    return auth_service_future
                                 except Exception as e2:
-                                    logger.debug("Failed to get real backend: %s", e2)
+                                    logger.debug("Fallback proxy access failed: %s", e2)
                     except Exception as e:
                         logger.debug(
                             "Backend %d: %s (failed to get schemes: %s)",

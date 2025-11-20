@@ -31,7 +31,7 @@ class VKMAuthService:
         self.credentials_manager = credentials_manager
         self.config = config
         self.auth_handlers = AuthHandlers()
-        self.status = AuthStatus.ERROR
+        self.status = AuthStatus.NOT_AUTHENTICATED
         self.error_message: str | None = None
         self.captcha_sid: str | None = None
         self.captcha_img: str | None = None
@@ -104,7 +104,7 @@ class VKMAuthService:
 
             user_agent = self.credentials_manager.get_user_agent(
                 self.config.get("user_agent")
-            )  # noqa: E501
+            )
 
             self._auth_thread = threading.Thread(
                 target=self._auth_thread_func,
@@ -179,7 +179,7 @@ class VKMAuthService:
             raise ValueError(token_data_error_msg)
 
         if isinstance(token_data, str):
-            # If token_data is a string, it's the access token
+            # TokenReceiver.get_token() returns a string
             access_token = token_data
         elif isinstance(token_data, dict):
             # If token_data is a dict, extract values
@@ -187,8 +187,8 @@ class VKMAuthService:
             user_id = token_data.get("user_id") or token_data.get("id")
         elif (
             hasattr(token_data, "access_token")
-            and hasattr(token_data, "access_token")
-            and token_data.access_token is not None
+            and hasattr(token_data, "user_id")
+            and token_data.access_token is not None  # type: ignore[attr-defined]
         ):  # type: ignore[attr-defined]
             # If token_data is an object with access_token attribute
             access_token = token_data.access_token  # type: ignore[attr-defined]

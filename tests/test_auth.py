@@ -113,7 +113,7 @@ class TestVKMAuthService(unittest.TestCase):
 
     def test_initial_state(self) -> None:
         """Test the initial state of the auth service."""
-        assert self.auth_service.status == AuthStatus.ERROR
+        assert self.auth_service.status == AuthStatus.NOT_AUTHENTICATED
         assert self.auth_service.vk_service is None
 
     @patch("mopidy_vkm.auth.token.Service")
@@ -152,7 +152,7 @@ class TestVKMAuthService(unittest.TestCase):
         auth_service = VKMAuthService(self.credentials_manager, self.config)
 
         # Check that the service was not initialized
-        assert auth_service.status == AuthStatus.ERROR
+        assert auth_service.status == AuthStatus.NOT_AUTHENTICATED
         mock_service.assert_not_called()
 
     @patch("mopidy_vkm.auth.token.Service")

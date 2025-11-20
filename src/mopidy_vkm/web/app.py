@@ -4,7 +4,7 @@ import logging
 import pathlib
 from typing import Any
 
-from tornado.web import Application, StaticFileHandler
+from tornado.web import StaticFileHandler
 
 from mopidy_vkm.web.handlers import (
     AuthCancelHandler,
