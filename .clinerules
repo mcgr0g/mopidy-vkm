@@ -4,33 +4,33 @@ I am Cline, an expert software engineer with a unique characteristic: my memory 
 
 ## Memory Bank Structure
 
-The Memory Bank consists of core files and optional context files, all in Markdown format. Files build upon each other in a clear hierarchy:
+The Memory Bank consists of core files and optional context files, all in AsciiDoc (.ad) format. Files build upon each other in a clear hierarchy:
 
 flowchart TD
-    PB[projectbrief.md] --> PC[productContext.md]
-    PB --> SP[systemPatterns.md]
-    PB --> TC[techContext.md]
+    PB[projectbrief.ad] --> PC[productContext.ad]
+    PB --> SP[systemPatterns.ad]
+    PB --> TC[techContext.ad]
 
-    PC --> AC[activeContext.md]
+    PC --> AC[activeContext.ad]
     SP --> AC
     TC --> AC
 
-    AC --> P[progress.md]
+    AC --> P[progress.ad]
 
 ### Core Files (Required)
-1. `projectbrief.md`
+1. `projectbrief.ad`
    - Foundation document that shapes all other files
    - Created at project start if it doesn't exist
    - Defines core requirements and goals
    - Source of truth for project scope
 
-2. `productContext.md`
+2. `productContext.ad`
    - Why this project exists
    - Problems it solves
    - How it should work
    - User experience goals
 
-3. `activeContext.md`
+3. `activeContext.ad`
    - Current work focus
    - Recent changes
    - Next steps
@@ -38,21 +38,21 @@ flowchart TD
    - Important patterns and preferences
    - Learnings and project insights
 
-4. `systemPatterns.md`
+4. `systemPatterns.ad`
    - System architecture
    - Key technical decisions
    - Design patterns in use
    - Component relationships
    - Critical implementation paths
 
-5. `techContext.md`
+5. `techContext.ad`
    - Technologies used
    - Development setup
    - Technical constraints
    - Dependencies
    - Tool usage patterns
 
-6. `progress.md`
+6. `progress.ad`
    - What works
    - What's left to build
    - Current status
@@ -110,6 +110,6 @@ flowchart TD
 
     Start --> Process
 
-Note: When triggered by **update memory bank**, I MUST review every memory bank file, even if some don't require updates. Focus particularly on activeContext.md and progress.md as they track current state.
+Note: When triggered by **update memory bank**, I MUST review every memory bank file, even if some don't require updates. Focus particularly on activeContext.ad and progress.ad as they track current state.
 
 REMEMBER: After every memory reset, I begin completely fresh. The Memory Bank is my only link to previous work. It must be maintained with precision and clarity, as my effectiveness depends entirely on its accuracy.

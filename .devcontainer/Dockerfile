@@ -55,6 +55,8 @@ RUN --mount=type=cache,target=/var/cache/apt \
     # audio deps
     pulseaudio \
     alsa-utils \
+    # vscode deps
+    graphviz \
     # X11 and display deps for Playwright UI mode
     ffmpeg \
     xvfb \

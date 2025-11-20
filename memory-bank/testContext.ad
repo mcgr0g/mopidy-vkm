@@ -1,0 +1,256 @@
+= Test Context
+
+== Test Structure and Organization
+
+The project follows a structured approach to testing with a focus on unit tests and mocking external dependencies:
+
+=== Unit Test Organization
+
+. **Test File Structure**
+** Tests are organized in the `tests/` directory
+** Test files follow naming convention `test_*.py`
+** Each module has corresponding test file (e.g., `auth.py` → `test_auth.py`)
+
+. **Test Class Structure**
+** Tests use Python's `unittest` framework
+** Each test class inherits from `unittest.TestCase`
+** Test methods follow naming convention `test_*`
+** Setup and teardown methods (`setUp`, `tearDown`) used for test initialization and cleanup
+
+. **Test Method Organization**
+** Each test method focuses on single functionality or scenario
+** Test methods have descriptive names explaining what they test
+** Tests organized from simple to complex scenarios
+
+=== Mocking Strategy
+
+The project uses `unittest.mock` module for mocking external dependencies:
+
+. **Mock Objects**
+** `MagicMock` used for creating mock objects
+** Mock objects configured with appropriate return values and side effects
+** `patch` decorator/context manager used for replacing classes and functions
+
+. **External Dependencies**
+** VK API dependencies (`vkpymusic`) mocked to avoid actual API calls
+** File system operations mocked or use temporary directories
+** Network operations mocked to avoid actual network calls
+
+. **Mock Configuration**
+** Mocks configured with appropriate return values
+** Side effects used for simulating errors and exceptions
+** Mock assertions used to verify methods called with expected arguments
+
+=== Test Coverage Goals
+
+The project aims for comprehensive test coverage:
+
+. **Coverage Targets**
+** Minimum 60% overall test coverage
+** Critical paths (authentication, credential handling) should have >80% coverage
+** All public APIs should be tested
+
+. **Coverage Measurement**
+** Coverage measured using pytest-cov
+** Coverage reports generated during CI runs
+** Coverage gaps identified and addressed in subsequent iterations
+
+=== Type Checking in Tests
+
+. **Type Annotations**
+** All test methods include return type annotations (`-> None`)
+** Mock objects properly typed with appropriate specs
+** Type checking enforced in CI pipeline
+
+. **Type Checking Exceptions**
+** In test code, some type checking rules may be relaxed with appropriate comments
+** When mocking complex objects, `# type: ignore` comments used with specific error codes
+
+=== Manual End-to-End Testing
+
+For complete system validation, manual E2E testing is required:
+
+. **E2E Test with Real VK Account**
+** Place test account credentials in root `.env` file:
+*** `VK_TEST_LOGIN`
+*** `VK_TEST_PASSWORD`
+** Start Mopidy server with VKM extension: `uv run mopidy --config /workspace/mopidy.conf`
+** Open `/vkm` in browser at http://localhost:6680/vkm
+** Enter credentials from `.env` (manually or via test harness)
+** Complete captcha or 2FA if prompted
+** Verify `/vkm/auth/status` transitions to `success`
+** Verify VK library is accessible and playback works
+
+. **Testing Authentication Flows**
+** Test normal login flow
+** Test captcha challenge flow
+** Test 2FA challenge flow
+** Test error handling (invalid credentials, network errors)
+** Test token refresh flow
+
+. **Security Testing**
+** Verify credentials are stored securely
+** Verify sensitive data is not exposed in logs
+** Verify proper error handling for security-related operations
+
+=== Test Execution
+
+All tests must be run using project's environment via uv:
+
+[source,bash]
+----
+# Run all tests with coverage
+uv run pytest tests/ -v --cov=src/mopidy_vkm
+
+# Run specific test file
+uv run pytest tests/test_auth.py -v
+
+# Run tests with coverage report
+uv run pytest tests/ --cov=src/mopidy_vkm --cov-report=html
+----
+
+This ensures correct tool versions and consistent dependency resolution.
+
+=== Playwright Browser Configuration
+
+For devcontainer testing:
+* Verify browser location with: `ls -la $PLAYWRIGHT_BROWSERS_PATH/chromium-1179/chrome-linux/chrome`
+* Ensure Playwright browsers are installed: `uv run playwright install chromium`
+
+== Environment Validation
+
+=== Basic Health Checks
+
+. **Extension Loading Validation**
+
+[source,bash]
+----
+# Check if VKM extension is properly discovered
+uv run mopidy list | grep -A 5 -B 5 vkm
+
+# Verify extension configuration
+uv run mopidy config | grep -A 10 "[vkm]"
+
+# Check for extension loading errors
+uv run mopidy --config /workspace/mopidy.conf 2>&1 | grep -i error
+----
+
+. **HTTP Server Validation**
+
+[source,bash]
+----
+# Check if port 6680 is bound
+netstat -tlnp | grep 6680
+
+# Test basic HTTP response
+curl --max-time 5 -I http://localhost:6680/
+
+# Test Mopidy RPC endpoint
+curl --max-time 5 http://localhost:6680/mopidy/rpc -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "core.get_uri_schemes"}'
+----
+
+. **VKM Routes Validation**
+
+[source,bash]
+----
+# Test VKM status endpoint
+curl --max-time 5 http://localhost:6680/vkm/auth/status
+
+# Test VKM main endpoint
+curl --max-time 5 http://localhost:6680/vkm
+
+# Check for VKM route registration
+curl --max-time 5 http://localhost:6680/mopidy/rpc -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "core.get_uri_schemes"}' | grep vkm
+----
+
+== Service Startup & Validation
+
+=== Expected Startup Sequence
+
+. **Configuration Loading**: Mopidy loads configuration files
+. **Extension Discovery**: Mopidy discovers available extensions
+. **Backend Initialization**: Each extension's backend is initialized
+. **HTTP Server Setup**: HTTP server starts and binds to configured port
+. **Route Registration**: Web endpoints are registered
+
+=== Validation Commands
+
+[source,bash]
+----
+# 1. Check Mopidy process
+ps aux | grep mopidy | grep -v grep
+
+# 2. Verify HTTP server is listening
+netstat -tlnp | grep 6680
+
+# 3. Test HTTP functionality
+curl --max-time 5 -v http://localhost:6680/mopidy/rpc -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "core.get_uri_schemes"}'
+
+# 4. Check VKM extension status
+curl --max-time 5 http://localhost:6680/vkm/auth/status
+
+# 5. Verify VKM routes are registered
+curl --max-time 5 http://localhost:6680/vkm
+----
+
+== Common Issues and Solutions
+
+=== Issue: Extension Not Loading
+
+**Symptoms**: Extension not in `mopidy list` output
+**Causes**: Missing dependencies, configuration errors, import errors
+**Solutions**:
+* Check mopidy logs for errors
+* Verify vkpymusic installation: `uv run pip list | grep vkpymusic`
+* Validate configuration syntax: `uv run mopidy config --validate`
+
+=== Issue: Port Already in Use
+
+**Symptoms**: HTTP server fails to bind to port 6680
+**Causes**: Another process using the port
+**Solutions**:
+* Check what's using the port: `lsof -i :6680`
+* Use alternative port in configuration
+* Restart services if needed
+
+== Development Testing Commands
+
+[source,bash]
+----
+# Quick health check
+ps aux | grep mopidy | grep -v grep && \
+netstat -tlnp | grep 6680 && \
+curl --max-time 5 http://localhost:6680/mopidy/rpc -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "core.get_uri_schemes"}'
+
+# Check VKM extension status
+uv run mopidy config | grep -A 10 "[vkm]" && \
+uv run mopidy list | grep vkm
+
+# Test with minimal configuration
+cat > /tmp/minimal.conf << 'EOF'
+[core]
+cache_dir = /tmp/mopidy-cache
+config_dir = /tmp/mopidy-config
+
+[http]
+enabled = true
+hostname = 0.0.0.0
+port = 6680
+
+[file]
+enabled = true
+
+[vkm]
+enabled = true
+EOF
+
+uv run mopidy --config /tmp/minimal.conf
+----

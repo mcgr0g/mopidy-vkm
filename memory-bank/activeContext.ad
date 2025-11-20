@@ -1,0 +1,65 @@
+= Current Active Tasks
+
+== 1. Implement Web Interface
+**Status:** ready for test
+
+* **Goal:** Create `mopidy_vkm.web` module that:
+** Provides Tornado request handlers for `/vkm/auth` endpoints.
+** Implements the `/vkm/auth/status` method to report current authentication state.
+** Supports login, captcha submission, and 2FA code submission routes.
+** Updates frontend via polling or asynchronous events.
+
+== 2. Manual E2E Testing
+**Status:** ready for test
+
+* **Goal:** Verify the complete authentication flow with a real VK account
+* **Steps:**
+.. Place test account credentials in root `.env` file under:
+*** `VK_TEST_LOGIN`
+*** `VK_TEST_PASSWORD`
+.. Open `/vkm` in browser.
+.. Enter the credentials from `.env` (either manually or via test harness).
+.. If prompted, complete captcha or 2FA step.
+.. Verify `/vkm/auth/status` transitions to `success` and that the VK library is accessible.
+
+== Current Development Status
+
+=== Next Development Phase
+
+* VKM extension fully functional and ready for music library integration
+* All core systems operational - authentication, web interface, backend
+* Standard port 6680 configuration working properly
+* Ready for player functionality implementation
+
+=== Configuration Reference
+
+See <<devcontainerConfigContext.ad,devcontainerConfigContext.ad>> for port configuration details
+
+== Recent Improvements
+
+=== Authentication Module
+
+* ✅ Refactored into specialized submodules with clear separation of concerns
+* ✅ Fixed all linter and type checking errors
+* ✅ Improved error handling and security
+* ✅ Enhanced test coverage to 64%
+
+=== Code Quality Standards
+
+* All new code must follow the type annotation conventions in `systemPatterns.ad`
+* Linter errors must be fixed or explicitly suppressed with appropriate comments
+* Security-sensitive code must use `secrets` module instead of `random`
+* Exception handling must include specific error messages and proper logging
+
+=== Test Context Enhancements
+
+* ✅ Added comprehensive Environment Validation section
+* ✅ Added Service Startup & Validation with troubleshooting commands
+* ✅ Added detailed Troubleshooting Guide for common issues
+* ✅ Documented current problems with diagnostic solutions
+
+== Notes
+
+* All sensitive data must be accessed through `CredentialsManager` API.
+* Ensure logging does not expose tokens, passwords, or user profile details.
+* **CRITICAL:** Basic Mopidy integration must work before proceeding with feature development.

@@ -1,0 +1,279 @@
+= Auth Subsystem Context
+
+The authentication subsystem manages secure access to VK through vkpymusic library and stores all sensitive credentials on disk. The system handles complex multi-step VK authentication (including captcha and 2FA) and must support smooth reauthorization using stored credentials when available.
+
+== Status Descriptions
+
+[cols="1,3a"]
+|===
+|Status |Description
+
+|NOT_AUTHENTICATED |Initial state, no valid credentials available. Web UI shows login form.
+|INITIALIZING |Loading and validating cached credentials from storage.
+|PROCESSING |Active authentication flow with user credentials submitted.
+|CAPTCHA_REQUIRED |VK API requested captcha verification. User must solve captcha.
+|TWO_FACTOR_REQUIRED |VK API requested two-factor authentication. User must provide 2FA code.
+|SUCCESS |Successfully authenticated with valid access token and VK service initialized.
+|ERROR |Authentication failed or critical error occurred. Contains error_message in response.
+|===
+
+== VKMAuthService Architecture Diagram
+
+[plantuml]
+----
+@startuml VKMAuthServiceArchitecture
+
+participant "Web UI" as UI
+participant "VKMAuthService" as Service
+participant "AuthHandlers" as Handlers
+database "CredentialsManager" as Creds
+participant "TokenReceiver\n(External Library)" as Token
+participant "[External] VK Service" as VK
+
+UI -> Service: start_auth(login, password)
+activate Service
+
+Service -> Handlers: Initialize handlers
+Service -> Creds: get_user_agent()
+Service -> Token: TokenReceiver(login, password, handlers)
+activate Token
+
+Note over Token: **External vkpymusic library**
+Note over Token: Authentication flow with VK API
+Token -> Handlers: captcha_handler(captcha_sid, captcha_img)
+Token -> Handlers: two_factor_handler()
+Token --> Service: access_token, user_id
+
+deactivate Token
+
+Service -> Creds: update_credentials(token, user_id, agent)
+Service -> VK: Service(token, user_id, user_agent)
+activate VK
+Service --> UI: get_status() - SUCCESS
+deactivate Service
+
+UI -> Service: submit_captcha(solution)
+Service -> Handlers: submit_captcha(solution)
+Handlers -> Token: resume auth flow
+Token --> Service: access_token, user_id
+Service --> UI: get_status() - SUCCESS
+
+UI -> Service: submit_two_factor(code)
+Service -> Handlers: submit_two_factor(code)
+Handlers -> Token: resume auth flow
+Token --> Service: access_token, user_id
+Service --> UI: get_status() - SUCCESS
+
+@enduml
+----
+
+== Authentication State Diagram
+
+[plantuml]
+----
+@startuml AuthenticationStateDiagram
+
+state "NOT_AUTHENTICATED" as NOT_AUTH
+state "INITIALIZING" as INIT
+state "PROCESSING" as PROC
+state "CAPTCHA_REQUIRED" as CAP
+state "TWO_FACTOR_REQUIRED" as TFA
+state "SUCCESS" as SUCC
+state "ERROR" as ERR
+
+[*] --> NOT_AUTH
+
+NOT_AUTH --> INIT : cached token
+NOT_AUTH --> PROC : login attempt
+INIT --> SUCC : token valid
+INIT --> NOT_AUTH : no cached token
+INIT --> ERR : init failed
+
+PROC --> CAP : captcha required
+PROC --> TFA : 2FA required
+PROC --> SUCC : login successful
+PROC --> ERR : login failed
+
+CAP --> PROC : captcha solved
+CAP --> ERR : captcha failed
+CAP --> NOT_AUTH : user cancel
+
+TFA --> PROC : 2FA successful
+TFA --> ERR : 2FA failed
+TFA --> NOT_AUTH : user cancel
+
+SUCC --> NOT_AUTH : token invalid
+SUCC --> PROC : re-auth required
+
+ERR --> NOT_AUTH : cancel/reset
+ERR --> PROC : retry
+
+@enduml
+----
+
+== State Transitions Matrix
+
+[cols="1,1,2,2a"]
+|===
+
+|From State
+|To State
+|Trigger
+|Conditions
+
+|NOT_AUTHENTICATED
+|INITIALIZING
+|Service init
+|access_token exists
+
+|NOT_AUTHENTICATED
+|PROCESSING
+|User login
+|login + password provided
+
+|INITIALIZING
+|SUCCESS
+|Cached token validation
+|Token passes validation
+
+|INITIALIZING
+|NOT_AUTHENTICATED
+|No valid cached token
+|Token missing/invalid
+
+|INITIALIZING
+|ERROR
+|Initialization failure
+|Service creation failed
+
+|PROCESSING
+|CAPTCHA_REQUIRED
+|VK API requirement
+|Security check triggered
+
+|PROCESSING
+|TWO_FACTOR_REQUIRED
+|VK API requirement
+|2FA enabled on account
+
+|PROCESSING
+|SUCCESS
+|Login successful
+|Valid credentials
+
+|PROCESSING
+|ERROR
+|Login failure
+|Invalid credentials, network error
+
+|CAPTCHA_REQUIRED
+|PROCESSING
+|Captcha solved
+|Correct captcha input
+
+|CAPTCHA_REQUIRED
+|ERROR
+|Captcha failed
+|Multiple failed attempts
+
+|CAPTCHA_REQUIRED
+|NOT_AUTHENTICATED
+|User cancel
+|User cancels captcha
+
+|TWO_FACTOR_REQUIRED
+|PROCESSING
+|2FA successful
+|Correct 2FA code
+
+|TWO_FACTOR_REQUIRED
+|ERROR
+|2FA failed
+|Multiple failed attempts
+
+|TWO_FACTOR_REQUIRED
+|NOT_AUTHENTICATED
+|User cancel
+|User cancels 2FA
+
+|SUCCESS
+|NOT_AUTHENTICATED
+|Token invalidated
+|Expired, revoked, or API error
+
+|SUCCESS
+|PROCESSING
+|Re-authentication
+|Manual or automatic retry
+
+|ERROR
+|NOT_AUTHENTICATED
+|User action
+|Cancel, reset, or timeout
+
+|ERROR
+|PROCESSING
+|User retry
+|New login attempt
+
+|===
+
+== File storage (Credentials)
+
+Credentials saved to a single JSON file at path supplied by `sensitive_cache_path` in `ext.conf`
+
+The credentials file securely stores the following fields:
+
+* `access_token` — VK API authentication token (short- or long-lived)
+* `refresh_token` — token for obtaining new `access_token`
+* `client_user_id` — VK user ID, determined after first login; required for subsequent API calls
+* `user_agent` — browser/User-Agent string used when authenticating
+* `user_profile` — JSON-encoded profile object (id, name, avatar, etc.) that may be needed by frontend/components
+
+File permissions are enforced as 600 to restrict access.
+
+== User-Agent selection strategy
+
+The VK backend must provide a valid User-Agent string for every session. The strategy is as follows:
+
+. **Use the cached value**
+  If `user_agent` is present in Credentials, use it.
+. **Use a configured value**
+  If there is a value specified in the main Mopidy extension config (`ext.conf`), use it.
+. **Randomly select from preset**
+  If neither of the above exists, randomly pick a User-Agent string from a preset containing popular browser signatures:
+
+  ** Google Chrome, Mozilla Firefox on Windows, Ubuntu (Linux), and macOS
+  ** At least 2 up-to-date User-Agent lines for each OS/browser combination should be included in the preset, e.g.:
+  **** Windows: Chrome/119.0.6045.159, Firefox/119.0
+  **** Ubuntu: Chrome/119.0.6045.159, Firefox/119.0
+  **** macOS: Chrome/119.0.6045.159, Firefox/119.0
+
+This hierarchy reduces the risk of triggering anti-fraud systems or VK account locks by reusing or rotating legitimate user agents.
+
+== Token retrieval strategy
+
+The logic to obtain a working access token:
+
+. **Cached token**
+  Try to use the `access_token` from Credentials.
+
+  Before each VK API call, verify that the token is still valid (as supported by vkpymusic).
+. **Authorization flow**
+  If there is no token or the existing token is invalid/expired, initiate the VK authentication process via vkpymusic, including captcha or 2FA as necessary.
+
+  On success, update and cache the new `access_token` and `refresh_token`.
+
+  Also store the resulting `client_user_id` and the selected `user_agent` for future sessions.
+
+== Security notes
+
+* Credentials are never stored in plaintext outside the secured directory.
+* All backend code must access tokens and IDs through the CredentialsManager API, not through manual file reads/writes.
+* User-Agent rotation and caching logic must ensure that the selected value is reused whenever possible to avoid suspicious VK activity.
+* Authentication logs and error traces must never leak actual token values.
+
+== Extensibility
+
+* The auth subsystem is open for future improvements, e.g., supporting device-level identity, remote token refreshing, or alternative backends.
+* The current vkpymusic library dependency may be replaced in the future, but the credential and user-agent strategies should be preserved.
