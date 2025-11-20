@@ -21,6 +21,7 @@
         "saoudrizwan.claude-dev",
         "nefrob.vscode-just-syntax",
         "jebbs.plantuml",
+        "asciidoctor.asciidoctor-vscode",
         "ms-playwright.playwright"
       ],
       "settings": {
@@ -72,6 +73,10 @@
                 "path": "/bin/zsh",
                 "args": ["--login", "--interactive"]
             }
+        },
+        "asciidoc.extensions.enableKroki": true,
+        "asciidoc.preview.asciidoctorAttributes": {
+          "kroki-server-url": "http://127.0.0.1:8080"
         },
         "playwright.testDir": "tests/e2e"
       },

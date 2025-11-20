@@ -46,6 +46,18 @@ services:
       - "host.docker.internal:host-gateway"
     command: sleep infinity
 
+  kroki-server:
+    image: yuzutech/kroki:latest
+    container_name: dev-vkm-kroki-server
+    environment:
+      KROKI_RENDERER_MAX_RENDER_PER_PROCESS: 10
+      KROKI_RENDERER_TIMEOUT: 30000
+    ports:
+      - "127.0.0.1:8080:8000"
+    networks:
+      - mopidy-network
+    restart: unless-stopped
+
 volumes:
   command-history:
     driver: local
