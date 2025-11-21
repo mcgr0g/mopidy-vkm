@@ -113,3 +113,15 @@ flowchart TD
 Note: When triggered by **update memory bank**, I MUST review every memory bank file, even if some don't require updates. Focus particularly on activeContext.ad and progress.ad as they track current state.
 
 REMEMBER: After every memory reset, I begin completely fresh. The Memory Bank is my only link to previous work. It must be maintained with precision and clarity, as my effectiveness depends entirely on its accuracy.
+
+## Publication Types
+
+### Dynamic Publications
+- `activeContext.ad` - Current work focus, recent changes, next steps
+- `progress.ad` - What works, what's left to build, evolution of decisions
+- **Status indicators (✅, ❌, etc.) are only allowed in dynamic publications**
+
+### Static Publications
+- All other files (`projectBrief.ad`, `productContext.ad`, `systemPatterns.ad`, `techContext.ad`, `authContext.ad`, `testContext.ad`, `webHandlersContext.ad`, `playwrightMcpContext.ad`)
+- Reflect current state or working aspects only
+- **Do not include status indicators** - focus on permanent documentation of systems and patterns

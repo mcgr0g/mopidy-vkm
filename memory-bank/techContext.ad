@@ -14,7 +14,7 @@
 
 === Linting / Type Checking Convention
 
-* All linting and type checking MUST be executed using the project's environment via uv's run command.
+* All linting and type checking MUST be executed using project's environment via uv's run command.
 * This ensures correct tool versions and consistent dependency resolution, avoiding conflicts with globally installed versions.
 * Specifically, always run:
 ** `uv run ruff check .`
@@ -28,6 +28,20 @@
 
 IMPORTANT: Avoid running these tools directly with `python -m` or using globally installed versions to prevent environment inconsistencies.
 
-== DevContainer Configuration
+== Configuration Files
 
-See <<devcontainerConfigContext.ad,devcontainerConfigContext.ad>> for specific port configuration details and networking setup.
+* Main config: `config/development.conf` - Development and testing configuration
+* Extension configs: Located in `src/mopidy_vkm/ext.conf`
+
+== Specialized Technologies
+
+=== Authentication Technology
+See <<authContext.ad,authContext.ad>> for VK authentication implementation details and security patterns.
+
+=== Web Framework Integration
+See <<webHandlersContext.ad,webHandlersContext.ad>> for Tornado endpoint patterns and API implementation.
+
+=== Testing Infrastructure
+See <<testContext.ad,testContext.ad>> for testing technology stack and validation procedures.
+
+=== Development Automation

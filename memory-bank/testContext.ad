@@ -74,7 +74,7 @@ For complete system validation, manual E2E testing is required:
 ** Place test account credentials in root `.env` file:
 *** `VK_TEST_LOGIN`
 *** `VK_TEST_PASSWORD`
-** Start Mopidy server with VKM extension: `uv run mopidy --config /workspace/mopidy.conf`
+** Start Mopidy server with VKM extension: `uv run mopidy --config config/development.conf`
 ** Open `/vkm` in browser at http://localhost:6680/vkm
 ** Enter credentials from `.env` (manually or via test harness)
 ** Complete captcha or 2FA if prompted
@@ -132,7 +132,7 @@ uv run mopidy list | grep -A 5 -B 5 vkm
 uv run mopidy config | grep -A 10 "[vkm]"
 
 # Check for extension loading errors
-uv run mopidy --config /workspace/mopidy.conf 2>&1 | grep -i error
+uv run mopidy --config config/development.conf 2>&1 | grep -i error
 ----
 
 . **HTTP Server Validation**

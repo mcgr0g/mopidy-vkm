@@ -101,15 +101,20 @@
             }
           },
           "playwright": {
-              "command": "npx",
-              "args": [
-                "@executeautomation/playwright-mcp-server"
-              ],
-              "cwd": "/workspace/js-tools",
-              "env": {
-                "DISPLAY": ":99"
-              }
+            "command": "npx",
+            "args": [
+              "@executeautomation/playwright-mcp-server"
+            ],
+            "cwd": "/workspace/js-tools",
+            "env": {
+              "DISPLAY": ":99",
+              "PLAYWRIGHT_BROWSERS_PATH": "/workspace/.browsers",
+              "CHROME_EXECUTABLE_PATH": "/workspace/.browsers/chromium-latest/chrome-linux/chrome",
+              "RECORDINGS_DIR": "/workspace/.recordings",
+              "PLAYWRIGHT_AUTOMATICALLY_APPROVE_LOCALHOST": "true",
+              "PLAYWRIGHT_SKIP_BROWSER_PERMISSIONS": "true"
             }
+          }
         }
       }
     }

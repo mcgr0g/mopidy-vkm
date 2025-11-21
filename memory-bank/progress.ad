@@ -12,6 +12,8 @@
 |2025-11-14 |VKM Extension Loading Fixed |Fixed Pykka proxy access issues in web handlers. All API endpoints now working correctly.
 |2025-11-15 |Port 6680 Conflict Resolved |Configured bridge networking in devcontainer to resolve VS Code/Mopidy port conflict. VKM extension fully functional on standard port 6680.
 |2025-11-20 |Documentation Migration |Migrated all memory bank files from Markdown (.md) to AsciiDoc (.ad) format for better table support and PlantUML integration.
+|2025-11-20 |Auth Status Enhancement |Added NOT_AUTHENTICATED status, fixed token access type errors, updated all tests for proper validation.
+|2025-11-20 |Playwright MCP Issue Discovered |Identified browser detection problem in MCP server - path mismatch between Docker config and MCP expectations.
 |===
 
 == Completed Tasks

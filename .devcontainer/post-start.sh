@@ -92,6 +92,14 @@ fi
 # Проверяем установку браузеров
 if [ -d "/workspace/.browsers" ] && [ "$(ls -A /workspace/.browsers 2>/dev/null)" ]; then
     echo "✅ Playwright browsers are installed"
+
+    # Создаем симлинк на последнюю версию Chromium
+    LATEST_CHROMIUM=$(ls -1 /workspace/.browsers/ | grep '^chromium-' | grep -v '_headless' | sort -V | tail -1)
+    if [ -n "$LATEST_CHROMIUM" ]; then
+        echo "Creating symlink for latest Chromium: $LATEST_CHROMIUM"
+        ln -sfn "/workspace/.browsers/$LATEST_CHROMIUM" "/workspace/.browsers/chromium-latest"
+        echo "✅ Chromium symlink created"
+    fi
 else
     echo "⚠️ Playwright browsers not found - will be installed on first test run"
 fi

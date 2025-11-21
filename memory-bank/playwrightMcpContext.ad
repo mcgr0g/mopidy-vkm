@@ -1,0 +1,131 @@
+= Playwright MCP Server Recording Context
+
+== Recordings Organization
+
+=== Directory Structure
+```
+.recordings/
+├── 2025-11-21_10-45_auth-flow.mp4
+├── 2025-11-21_10-47_login-bug.mp4
+├── 2025-11-21_10-47_login-bug_CONTEXT.json
+├── 2025-11-21_10-50_screenshot.png
+└── archive/                    # Old recordings (>30 days)
+```
+
+=== File Naming Convention
+
+Format: `YYYY-MM-DD_HH-MM_descriptive-name.extension`
+
+Examples:
+* `2025-11-21_10-45_auth-flow.mp4` - Authentication flow recording
+* `2025-11-21_10-47_login-bug.mp4` - Bug reproduction
+* `2025-11-21_10-50_screenshot.png` - Screenshot capture
+
+== MCP Recording Workflow
+
+=== Standard Recording (Most Common)
+When user requests: "record auth flow" or "test login"
+
+1. **Generate filename:**
+   ```bash
+   TIMESTAMP=$(date '+%Y-%m-%d_%H-%M')
+   FILENAME="${TIMESTAMP}_auth-flow.mp4"
+   ```
+
+2. **Record and save:**
+   - Use MCP Playwright to capture recording
+   - Save to `.recordings/$FILENAME`
+   - No additional metadata needed for general testing
+
+=== Bug Reproduction Recording
+When user requests: "record bug for GitHub issue #123"
+
+1. **Generate filenames:**
+   ```bash
+   TIMESTAMP=$(date '+%Y-%m-%d_%H-%M')
+   ISSUE_NUMBER="123"
+   VIDEO_FILENAME="${TIMESTAMP}_issue-${ISSUE_NUMBER}_bug.mp4"
+   CONTEXT_FILENAME="${TIMESTAMP}_issue-${ISSUE_NUMBER}_bug_CONTEXT.json"
+   ```
+
+2. **Create minimal context:**
+   ```json
+   {
+     "issue_number": "$ISSUE_NUMBER",
+     "description": "User reported issue description",
+     "timestamp": "2025-11-21T10:47:00Z",
+     "recording_file": "$VIDEO_FILENAME",
+     "steps_to_reproduce": [
+       "1. Navigate to http://localhost:6680/vkm/",
+       "2. Click login button",
+       "3. Observe error"
+     ]
+   }
+   ```
+
+3. **Save both files:**
+   - Video recording: `.recordings/$VIDEO_FILENAME`
+   - Context file: `.recordings/$CONTEXT_FILENAME`
+
+=== Screenshot Capture
+When user requests: "take screenshot" or "capture current state"
+
+1. **Generate filename:**
+   ```bash
+   TIMESTAMP=$(date '+%Y-%m-%d_%H-%M')
+   FILENAME="${TIMESTAMP}_screenshot.png"
+   ```
+
+2. **Capture and save:**
+   - Use MCP Playwright screenshot
+   - Save to `.recordings/$FILENAME`
+   - No additional context needed
+
+== MCP Command Examples
+
+=== User Request: "Cline, record VK authentication test"
+**MCP Actions:**
+1. Navigate to http://localhost:6680/vkm/
+2. Start recording with filename: `2025-11-21_10-45_auth-flow.mp4`
+3. Complete authentication flow
+4. Save recording to `.recordings/2025-11-21_10-45_auth-flow.mp4`
+
+=== User Request: "Cline, record bug for GitHub issue #456"
+**MCP Actions:**
+1. Create filenames:
+   - Video: `2025-11-21_10-47_issue-456_bug.mp4`
+   - Context: `2025-11-21_10-47_issue-456_bug_CONTEXT.json`
+2. Record bug reproduction
+3. Save video file
+4. Create minimal context JSON
+5. Both files ready for GitHub issue attachment
+
+=== User Request: "Cline, take screenshot of current page"
+**MCP Actions:**
+1. Capture screenshot
+2. Save as: `2025-11-21_10-50_screenshot.png`
+3. No additional files needed
+
+== MCP File Operations
+
+=== Automatic Archiving
+Files older than 30 days are automatically moved to `.recordings/archive/`
+
+=== Finding Recent Files
+```bash
+# List most recent recordings first
+ls -lt .recordings/*.mp4 .recordings/*.png 2>/dev/null | head -10
+
+# Find recordings for specific date
+ls -la .recordings/2025-11-21_*
+
+# Find bug recordings
+ls -la .recordings/*bug*
+```
+
+=== Cleaning Old Archives
+Files in archive older than 90 days are automatically deleted.
+
+== Server Configuration
+
+For localhost access without approval prompts, MCP Playwright server is configured in `.devcontainer/devcontainer.json` with automatic approval environment variables.
