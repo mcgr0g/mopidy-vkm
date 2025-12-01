@@ -7,7 +7,7 @@ The project follows a structured approach to testing with a focus on unit tests 
 === Unit Test Organization
 
 . **Test File Structure**
-** Tests are organized in the `tests/` directory
+** Tests are organized in `tests/` directory
 ** Test files follow naming convention `test_*.py`
 ** Each module has corresponding test file (e.g., `auth.py` → `test_auth.py`)
 
@@ -218,6 +218,56 @@ curl --max-time 5 http://localhost:6680/vkm
 * Check what's using the port: `lsof -i :6680`
 * Use alternative port in configuration
 * Restart services if needed
+
+== Safe Service Management
+
+=== Mopidy Process Control
+
+**SAFE STOP METHODS (NEVER use `pkill -f mopidy`):**
+
+**Method 1: Process-Specific Termination**
+```bash
+# Find mopidy process by exact command
+MOPIDY_PID=$(pgrep -f "uv run mopidy --config")
+if [ ! -z "$MOPIDY_PID" ]; then
+    kill -TERM $MOPIDY_PID  # Graceful shutdown
+    echo "Mopidy process $MOPIDY_PID terminated gracefully"
+else
+    echo "No mopidy process found"
+fi
+```
+
+**Method 2: HTTP API Shutdown**
+```bash
+# Graceful shutdown via RPC API
+curl -X POST http://localhost:6680/mopidy/rpc \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"core.shutdown","params":{}}' \
+  --max-time 5 || echo "API not responding - process may already be stopped"
+```
+
+**Method 3: mopidyctl (if available)**
+```bash
+mopidyctl stop || echo "mopidyctl not available"
+```
+
+**Service Status Check**
+```bash
+# Verify if mopidy is running
+ps aux | grep "mopidy.*--config" | grep -v grep || echo "Mopidy not running"
+```
+
+=== Development Workflow
+
+**After Code Changes:**
+1. **Rebuild package:** `uv pip install -e .`
+2. **Safe restart:** Use methods above (not `pkill -f mopidy`)
+3. **Verify changes:** Check logs or test functionality
+
+**Why safe methods matter:**
+- `pkill -f mopidy` catches: user `mopidy`, container name, processes with `/mopidy/` paths
+- Can accidentally terminate devcontainer or other critical processes
+- Exact process matching prevents collateral damage
 
 == Development Testing Commands
 

@@ -36,12 +36,71 @@ IMPORTANT: Avoid running these tools directly with `python -m` or using globally
 == Specialized Technologies
 
 === Authentication Technology
-See <<authContext.ad,authContext.ad>> for VK authentication implementation details and security patterns.
+VK authentication implementation uses vkpymusic library with minimal custom code. The system handles login flows, captcha challenges, and 2FA verification through web handlers.
 
 === Web Framework Integration
-See <<webHandlersContext.ad,webHandlersContext.ad>> for Tornado endpoint patterns and API implementation.
+Web handlers use Tornado RequestHandler with BaseHandler pattern. Endpoints include status polling, login processing, captcha/2FA verification, and authentication cancellation.
 
 === Testing Infrastructure
-See <<testContext.ad,testContext.ad>> for testing technology stack and validation procedures.
+Testing framework uses pytest with unittest.mock for external dependencies. Tests cover authentication flows, web handlers, and backend integration.
 
 === Development Automation
+
+== Web Handlers Implementation
+
+=== BaseHandler Pattern
+
+Web handlers use Tornado RequestHandler with a base class providing:
+
+**BaseHandler (`src/mopidy_vkm/web/handlers.py`)**:
+- Template path configuration for Tornado
+- `get_auth_service()`: Backend access using official Mopidy pattern
+  - `self.core.backends.get()` to get backends collection
+  - Iterate backend proxies and call `.get()` for real instances
+  - Find VKMBackend by isinstance() check
+  - Return auth_service directly
+
+**Handler Classes**:
+- `MainHandler`: Serves main authentication page
+- `AuthStatusHandler`: Returns current authentication status as JSON
+- `AuthLoginHandler`: Processes login requests with security validation
+- `AuthVerifyHandler`: Handles captcha/2FA verification
+- `AuthCancelHandler`: Cancels authentication process
+- `CaptchaPageHandler`/`SubmitHandler`: Captcha flow
+- `TwoFactorPageHandler`/`SubmitHandler`: 2FA flow
+
+**Security Implementation**:
+- Input validation functions for login/password, captcha, 2FA codes
+- Regex patterns for email/phone validation
+- Length limits and character restrictions
+- Proper error handling with logging
+
+=== Backend Access Pattern
+
+The `get_auth_service()` method follows Mopidy's official patterns:
+
+```python
+def get_auth_service(self) -> VKMAuthService | None:
+    from mopidy_vkm.backend import VKMBackend
+
+    core = cast("Any", self.core)
+
+    try:
+        backends = core.backends.get()
+        for backend_proxy in backends:
+            backend = backend_proxy.get()
+            if isinstance(backend, VKMBackend):
+                return backend.auth_service
+    except Exception:
+        pass
+
+    return None
+```
+
+**Key Principles**:
+- Use `cast("Any", self.core)` for type safety
+- Call `core.backends.get()` to get backends collection
+- Iterate through backend proxy instances
+- Call `.get()` on each proxy to get real backend
+- Use `isinstance()` to identify our VKM backend
+- Return service directly without additional lookups

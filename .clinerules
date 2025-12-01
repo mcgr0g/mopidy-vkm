@@ -18,7 +18,7 @@ flowchart TD
     AC --> P[progress.ad]
 
 ### Core Files (Required)
-1. `projectbrief.ad`
+1. `projectBrief.ad`
    - Foundation document that shapes all other files
    - Created at project start if it doesn't exist
    - Defines core requirements and goals
@@ -125,3 +125,23 @@ REMEMBER: After every memory reset, I begin completely fresh. The Memory Bank is
 - All other files (`projectBrief.ad`, `productContext.ad`, `systemPatterns.ad`, `techContext.ad`, `authContext.ad`, `testContext.ad`, `webHandlersContext.ad`, `playwrightMcpContext.ad`)
 - Reflect current state or working aspects only
 - **Do not include status indicators** - focus on permanent documentation of systems and patterns
+
+## CRITICAL: Memory Bank Reading Protocol
+
+When starting any task (especially after reset), you MUST:
+
+### Phase 1: Complete Memory Bank Reading
+1. Read ALL core files: projectBrief.ad, productContext.ad, activeContext.ad, systemPatterns.ad, techContext.ad, progress.ad
+2. Read ALL additional *.ad files in memory-bank/ (webHandlersContext.ad, authContext.ad, playwrightMcpContext.ad, testContext.ad, etc.)
+3. Cross-reference information across files - never rely on single file context
+
+### Phase 2: File Relationship Understanding
+1. Start with systemPatterns.ad for understanding file relationships and cross-references
+2. Only systemPatterns.ad contains cross-references to other files
+3. All other files are self-contained without external references
+4. Focus on activeContext.ad for current work priorities
+
+### Phase 3: Context Validation
+1. Verify understanding matches current project state
+2. Identify any gaps or inconsistencies
+3. Proceed with task using complete context

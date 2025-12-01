@@ -84,6 +84,57 @@ Each submodule has a specific responsibility:
 
 == Mopidy Guidelines
 
-* All URIs use the `vkm:` scheme.
+* All URIs use `vkm:` scheme.
 * Providers must implement: `browse`, `lookup`, `search`, `translate_uri`, `play`, `pause`, `seek`.
 * Never block the actor loop; use threads or async helpers.
+
+== File Relationship Patterns
+
+=== Memory Bank Hierarchy
+
+**Core Files (Project Foundation):**
+- `projectBrief.ad` - High-level project description
+- `productContext.ad` - Why project exists and user experience goals
+- `systemPatterns.ad` - YOU ARE HERE - architectural patterns and file relationships
+- `techContext.ad` - Technical stack, dependencies, development setup
+- `activeContext.ad` - Current work focus and next steps
+- `progress.ad` - What works, what's left, evolution of decisions
+
+**Specialized Files (Domain-Specific):**
+- `testContext.ad` - Testing procedures, service management, validation commands
+- `authContext.ad` - Authentication patterns and security considerations
+- `webHandlersContext.ad` - Web architecture and routing patterns
+- `playwrightMcpContext.ad` - Browser automation and E2E testing
+
+**Cross-Reference Rule:**
+- Only `systemPatterns.ad` contains cross-references to other files
+- All other files are self-contained without external references
+- For detailed procedures: see the specific specialized file
+
+== Development Patterns
+
+=== Python Code Modification Cycle
+
+**Required Sequence:**
+1. Make code changes in `src/` directory
+2. Rebuild package: `uv pip install -e .`
+3. Restart affected services (using safe methods from `testContext.ad`)
+4. Verify changes are applied via logs or testing
+
+**Why this order:** Python packages in development mode need egg-info refresh after source changes
+
+=== Service Management Patterns
+
+**Safe Service Operations:**
+- Use safe shutdown methods documented in `testContext.ad` (Service Management section)
+- NEVER use `pkill -f mopidy` (catches container/user/processes)
+- Always verify service status after operations
+- For service restart procedures: see `testContext.ad`
+
+=== Memory Bank Reading Protocol
+
+**When Starting Any Task:**
+1. Read ALL files in `memory-bank/*.ad` (no exceptions)
+2. Start with `systemPatterns.ad` for understanding file relationships
+3. Cross-reference information mentally - files are self-contained
+4. Focus on `activeContext.ad` for current work priorities

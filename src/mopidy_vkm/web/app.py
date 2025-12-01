@@ -11,7 +11,10 @@ from mopidy_vkm.web.handlers import (
     AuthLoginHandler,
     AuthStatusHandler,
     AuthVerifyHandler,
+    CaptchaPageHandler,
+    ChallengeSubmitHandler,
     MainHandler,
+    TwoFactorPageHandler,
 )
 
 logger = logging.getLogger(__name__)
@@ -28,17 +31,23 @@ def create_web_app(
     # Get the path to the static files
     current_dir = pathlib.Path(__file__).parent
     static_dir = str(current_dir / "static")
-    template_dir = str(current_dir / "templates")
 
     # URL routing for authentication handlers - Mopidy adds /vkm prefix automatically
     handlers = [
         # Main authentication page
         (r"/?", MainHandler, handler_kwargs),
+        # Captcha and 2FA pages
+        (r"/captcha", CaptchaPageHandler, handler_kwargs),
+        (r"/twofactor", TwoFactorPageHandler, handler_kwargs),
         # Authentication API endpoints
         (r"/auth/login", AuthLoginHandler, handler_kwargs),
         (r"/auth/verify", AuthVerifyHandler, handler_kwargs),
         (r"/auth/status", AuthStatusHandler, handler_kwargs),
         (r"/auth/cancel", AuthCancelHandler, handler_kwargs),
+        # Challenge submission endpoints (captcha and 2FA)
+        (r"/captcha", ChallengeSubmitHandler, handler_kwargs),
+        (r"/twofactor", ChallengeSubmitHandler, handler_kwargs),
+        (r"/cancel", AuthCancelHandler, handler_kwargs),  # Short cancel endpoint
         # Static files
         (r"/static/(.*)", StaticFileHandler, {"path": static_dir}),
     ]

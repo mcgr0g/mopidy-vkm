@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VK Music - Captcha Required</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .captcha-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .captcha-image {
+            max-width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .form-group {
+            margin: 20px 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        .buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #545b62;
+        }
+        .error {
+            color: #dc3545;
+            margin-top: 10px;
+            text-align: center;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>VK Music Authentication</h1>
+
+        <div class="captcha-container">
+            <h2>Captcha Required</h2>
+            <p>Please enter the captcha text to continue:</p>
+
+            {% if captcha_url %}
+            <img src="{{ captcha_url }}" alt="Captcha" class="captcha-image" id="captcha-image">
+            {% endif %}
+        </div>
+
+        <form id="captcha-form">
+            <div class="form-group">
+                <label for="captcha-solution">Captcha Text:</label>
+                <input type="text" id="captcha-solution" name="captcha_solution" required autocomplete="off">
+            </div>
+
+            <div class="buttons">
+                <button type="submit" class="btn-primary">Submit</button>
+                <button type="button" class="btn-secondary" onclick="cancelAuth()">Cancel</button>
+            </div>
+
+            <div class="error" id="error-message"></div>
+            <div class="loading" id="loading">Processing...</div>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('captcha-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const solution = document.getElementById('captcha-solution').value;
+            const errorDiv = document.getElementById('error-message');
+            const loadingDiv = document.getElementById('loading');
+
+            errorDiv.textContent = '';
+            loadingDiv.style.display = 'block';
+
+            try {
+                const response = await fetch('/vkm/captcha', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        captcha_solution: solution
+                    })
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.status === 'success') {
+                    // Redirect to main page or show success
+                    window.location.href = '/vkm/';
+                } else {
+                    errorDiv.textContent = result.error || 'Failed to submit captcha';
+                }
+            } catch (error) {
+                errorDiv.textContent = 'Network error. Please try again.';
+            } finally {
+                loadingDiv.style.display = 'none';
+            }
+        });
+
+        function cancelAuth() {
+            if (confirm('Are you sure you want to cancel authentication?')) {
+                fetch('/vkm/cancel', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                }).then(() => {
+                    window.location.href = '/vkm/';
+                });
+            }
+        }
+
+        // Refresh captcha on image click
+        document.getElementById('captcha-image')?.addEventListener('click', function() {
+            this.src = '{{ captcha_url }}&t=' + new Date().getTime();
+        });
+    </script>
+</body>
+</html>

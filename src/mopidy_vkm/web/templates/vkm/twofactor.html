@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VK Music - Two-Factor Authentication</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .twofactor-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .icon {
+            font-size: 48px;
+            color: #007bff;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin: 20px 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            box-sizing: border-box;
+            text-align: center;
+            letter-spacing: 2px;
+        }
+        .buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #545b62;
+        }
+        .error {
+            color: #dc3545;
+            margin-top: 10px;
+            text-align: center;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 10px;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>VK Music Authentication</h1>
+
+        <div class="twofactor-container">
+            <div class="icon">🔐</div>
+            <h2>Two-Factor Authentication</h2>
+
+            <div class="info">
+                <strong>Security Check Required</strong><br>
+                We've sent a verification code to your registered phone number via SMS.
+                Please enter the code below to continue.
+            </div>
+
+            <form id="twofactor-form">
+                <div class="form-group">
+                    <label for="twofactor-code">Verification Code:</label>
+                    <input type="text"
+                           id="twofactor-code"
+                           name="twofactor_code"
+                           required
+                           autocomplete="one-time-code"
+                           placeholder="000000"
+                           maxlength="6"
+                           pattern="[0-9]{6}">
+                </div>
+
+                <div class="buttons">
+                    <button type="submit" class="btn-primary">Verify</button>
+                    <button type="button" class="btn-secondary" onclick="cancelAuth()">Cancel</button>
+                </div>
+
+                <div class="error" id="error-message"></div>
+                <div class="loading" id="loading">Verifying...</div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('twofactor-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const code = document.getElementById('twofactor-code').value;
+            const errorDiv = document.getElementById('error-message');
+            const loadingDiv = document.getElementById('loading');
+
+            errorDiv.textContent = '';
+            loadingDiv.style.display = 'block';
+
+            try {
+                const response = await fetch('/vkm/twofactor', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        twofactor_code: code
+                    })
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.status === 'success') {
+                    // Redirect to main page or show success
+                    window.location.href = '/vkm/';
+                } else {
+                    errorDiv.textContent = result.error || 'Failed to verify code';
+                    // Clear the input on error
+                    document.getElementById('twofactor-code').value = '';
+                }
+            } catch (error) {
+                errorDiv.textContent = 'Network error. Please try again.';
+            } finally {
+                loadingDiv.style.display = 'none';
+            }
+        });
+
+        function cancelAuth() {
+            if (confirm('Are you sure you want to cancel authentication?')) {
+                fetch('/vkm/cancel', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                }).then(() => {
+                    window.location.href = '/vkm/';
+                });
+            }
+        }
+
+        // Auto-focus and select all text when input is focused
+        const codeInput = document.getElementById('twofactor-code');
+        codeInput.addEventListener('focus', function() {
+            this.select();
+        });
+
+        // Auto-submit when 6 digits are entered
+        codeInput.addEventListener('input', function() {
+            if (this.value.length === 6) {
+                document.getElementById('twofactor-form').dispatchEvent(new Event('submit'));
+            }
+        });
+    </script>
+</body>
+</html>

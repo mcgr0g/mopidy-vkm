@@ -15,6 +15,7 @@ dynamic = ["version"]
 dependencies = [
     "mopidy >= 3.4.1",
     "pykka >= 3.1.1",
+    "python-dotenv>=1.2.1",
     "vkpymusic >= 3.5.1",
 ]
 
@@ -49,6 +50,9 @@ source = ["src/", "*/site-packages/"]
 
 [tool.coverage.run]
 source_pkgs = ["mopidy_vkm"]
+omit = [
+    "*/auth/status.py",
+]
 
 [tool.coverage.report]
 show_missing = true

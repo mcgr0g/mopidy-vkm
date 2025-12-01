@@ -6,8 +6,7 @@ from typing import Any
 import pykka
 from mopidy import backend
 
-from mopidy_vkm.auth import CredentialsManager
-from mopidy_vkm.auth.service import VKMAuthService
+from mopidy_vkm.auth import VKMAuthService
 
 logger = logging.getLogger(__name__)
 
@@ -22,11 +21,23 @@ class VKMBackend(pykka.ThreadingActor, backend.Backend):
         self.config = config["vkm"]
         self.audio = audio
 
-        # Initialize credentials manager
+        # Initialize unified auth service
         sensitive_cache_path = self.config["sensitive_cache_path"]
-        self.credentials_manager = CredentialsManager(sensitive_cache_path)
-
-        # Initialize auth service
-        self.auth_service = VKMAuthService(self.credentials_manager, self.config)
+        self.auth_service = VKMAuthService(sensitive_cache_path, self.config)
 
         # TODO: Initialize library and playback provider  # noqa: FIX002
+
+    @property
+    def library(self) -> object:
+        """Get the library provider (placeholder)."""
+        return None
+
+    @property
+    def playback(self) -> object:
+        """Get the playback provider (placeholder)."""
+        return None
+
+    @property
+    def playlists(self) -> object:
+        """Get the playlists provider (placeholder)."""
+        return None

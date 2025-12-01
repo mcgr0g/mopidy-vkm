@@ -2,8 +2,10 @@
 
 import json
 import logging
+import re
 from typing import Any, cast
 
+import tornado.web
 from tornado.web import RequestHandler
 
 from mopidy_vkm.auth import AuthStatus
@@ -11,19 +13,74 @@ from mopidy_vkm.auth.service import VKMAuthService
 
 logger = logging.getLogger(__name__)
 
+# Security patterns for input validation
+EMAIL_PATTERN = re.compile(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
+PHONE_PATTERN = re.compile(r"^\+?[\d\s\-\(\)]{7,20}$")
+MIN_PASSWORD_LENGTH = 4
+
+
+def validate_login_password(login: str, password: str) -> tuple[bool, str]:
+    """Validate login and password for security."""
+    if not login or not login.strip():
+        return False, "Login is required"
+
+    if not password or len(password) < 1:
+        return False, "Password is required"
+
+    login = login.strip()
+
+    # Check if login is email or phone format
+    is_email = bool(EMAIL_PATTERN.match(login))
+    is_phone = bool(PHONE_PATTERN.match(login))
+
+    if not (is_email or is_phone):
+        return False, "Login must be valid email or phone number"
+
+    # Password length validation (basic security)
+    if len(password) < MIN_PASSWORD_LENGTH:
+        return False, "Password is too short"
+
+    return True, ""
+
+
+def validate_captcha_solution(captcha_solution: str) -> tuple[bool, str]:
+    """Validate captcha solution for security."""
+    if not captcha_solution or not captcha_solution.strip():
+        return False, "Captcha solution is required"
+
+    captcha_solution = captcha_solution.strip()
+    if len(captcha_solution) < 4:
+        return False, "Captcha solution is too short"
+    if len(captcha_solution) > 10:
+        return False, "Captcha solution is too long"
+
+    return True, ""
+
+
+def validate_two_factor_code(two_factor_code: str) -> tuple[bool, str]:
+    """Validate two-factor authentication code for security."""
+    if not two_factor_code or not two_factor_code.strip():
+        return False, "Two-factor code is required"
+
+    two_factor_code = two_factor_code.strip()
+    if len(two_factor_code) < 4:
+        return False, "Two-factor code is too short"
+    if len(two_factor_code) > 10:
+        return False, "Two-factor code is too long"
+    if not two_factor_code.isdigit():
+        return False, "Two-factor code must contain only digits"
+
+    return True, ""
+
 
 class BaseHandler(RequestHandler):
     """Base handler for VKM web requests."""
 
     def initialize(self, config: dict[str, Any], core: object) -> None:
-        """Initialize() handler.
-
-        Args:
-            config: The Mopidy configuration.
-            core: The Mopidy core API.
-        """
+        """Initialize handler."""
         self.config = config
         self.core = core
+        self.logger = logging.getLogger(self.__class__.__name__)
 
         # Set template path for Tornado
         import pathlib
@@ -33,137 +90,107 @@ class BaseHandler(RequestHandler):
         self.application.settings.setdefault("template_path", template_dir)
 
     def get_auth_service(self) -> VKMAuthService | None:
-        """Get the VKMAuthService instance from the backend.
-
-        Returns:
-            The VKMAuthService instance or None if not available.
-        """
-        # Import here to avoid circular imports
+        """Get VKMAuthService instance from backend using Mopidy pattern."""
         from mopidy_vkm.backend import VKMBackend
 
-        # self.core is a Pykka proxy - need to access backends correctly
+        # Official Mopidy pattern: access backends through core
         core = cast("Any", self.core)
-
-        # Try different approaches to access backends
         try:
-            # First try: core.backends.backends.get()
-            backends_proxy = core.backends.backends.get()
-            logger.debug("Found %d backends using .get() method", len(backends_proxy))
-            for i, backend in enumerate(backends_proxy):
-                logger.debug(
-                    "Backend %d: %s (%s)",
-                    i,
-                    type(backend).__name__,
-                    getattr(backend, "uri_schemes", []),
-                )
-                if isinstance(backend, VKMBackend):
-                    return backend.auth_service
-        except Exception as e1:
-            logger.debug("First approach failed: %s", e1)
-            try:
-                # Second try: core.backends.get() - Backends object itself
-                backends_obj = core.backends.get()
-                logger.debug("Found backends object: %s", type(backends_obj).__name__)
-                # Backends is iterable and contains the backend instances
-                for i, backend_proxy in enumerate(backends_obj):
-                    # Try to identify the backend by checking uri_schemes through proxy
+            backends_attr = getattr(core, "backends", None)
+
+            if backends_attr and hasattr(backends_attr, "get"):
+                backends = backends_attr.get()
+
+                for backend_proxy in backends:
                     try:
-                        uri_schemes_future = cast("Any", backend_proxy).uri_schemes
-                        logger.debug(
-                            "Backend %d: %s (schemes future: %s)",
-                            i,
-                            type(backend_proxy).__name__,
-                            type(uri_schemes_future).__name__,
-                        )
+                        # Try to access the actor directly through proxy
+                        if hasattr(backend_proxy, "_actor"):
+                            actor_ref = backend_proxy._actor
 
-                        # uri_schemes is also a Future - get its value
-                        uri_schemes = uri_schemes_future.get()
-                        logger.debug(
-                            "Backend %d: %s (schemes: %s)",
-                            i,
-                            type(backend_proxy).__name__,
-                            uri_schemes,
-                        )
-
-                        # VKM backend should have 'vkm' in its uri_schemes
-                        if (
-                            hasattr(uri_schemes, "__contains__")
-                            and "vkm" in uri_schemes
-                        ):
-                            logger.debug(
-                                "Found VKM backend at index %d by uri_schemes", i
-                            )
-                            # Try to access auth_service - get the real backend first
+                            # Try to get the actual class in different ways
                             try:
-                                backend = backend_proxy.get()
-                                logger.debug(
-                                    "Got real backend: %s",
-                                    type(backend).__name__,
-                                )
-                                auth_service = getattr(backend, "auth_service", None)
-                                if auth_service:
-                                    logger.debug(
-                                        "Got auth_service: %s",
-                                        type(auth_service).__name__,
-                                    )
+                                # Method 1: Check if class name matches
+                                if actor_ref.__class__.__name__ == "VKMBackend":
+                                    auth_service = backend_proxy.auth_service
+                                    # Pykka proxy returns a Future, we need to .get() the actual object
+                                    if hasattr(auth_service, "get"):
+                                        auth_service = auth_service.get()
                                     return auth_service
-                            except Exception as e:
-                                logger.debug(
-                                    "Failed to access auth_service through proxy: %s", e
-                                )
-                                # Try direct proxy access as fallback
-                                try:
-                                    auth_service_future = cast(
-                                        "Any", backend_proxy
-                                    ).auth_service
-                                    logger.debug(
-                                        "Auth service future type: %s",
-                                        type(auth_service_future).__name__,
-                                    )
-                                    if hasattr(auth_service_future, "get"):
-                                        auth_service = auth_service_future.get()
-                                        logger.debug(
-                                            "Got auth_service via future: %s",
-                                            type(auth_service).__name__,
-                                        )
-                                        return auth_service
-                                    return auth_service_future
-                                except Exception as e2:
-                                    logger.debug("Fallback proxy access failed: %s", e2)
-                    except Exception as e:
-                        logger.debug(
-                            "Backend %d: %s (failed to get schemes: %s)",
-                            i,
-                            type(backend_proxy).__name__,
-                            e,
-                        )
-            except Exception as e2:
-                logger.debug("Second approach failed: %s", e2)
-                try:
-                    # Third try: core.backends.backends (direct proxy access)
-                    backends_list = core.backends.backends
-                    logger.debug(
-                        "Found %d backends using direct proxy access",
-                        len(backends_list),
-                    )
-                    for i, backend_proxy in enumerate(backends_list):
-                        backend_name = getattr(backend_proxy, "__class__", {}).get(
-                            "__name__", "Unknown"
-                        )
-                        logger.debug("Backend %d proxy: %s", i, backend_name)
-                        if (
-                            hasattr(backend_proxy, "__class__")
-                            and backend_proxy.__class__.__name__ == "VKMBackend"
-                        ):
-                            # Access auth_service through the proxy
-                            return cast("Any", backend_proxy).auth_service
-                except Exception as e3:
-                    logger.debug("Third approach failed: %s", e3)
-                    logger.exception("All approaches failed to access VKM backend")
-                    return None
 
-        logger.warning("VKMBackend not found in any available backends")
+                                # Method 2: Check uri_schemes
+                                if hasattr(actor_ref, "uri_schemes"):
+                                    uri_schemes = actor_ref.uri_schemes
+                                    if "vkm" in uri_schemes:
+                                        auth_service = backend_proxy.auth_service
+                                        # Pykka proxy returns a Future, we need to .get() the actual object
+                                        if hasattr(auth_service, "get"):
+                                            auth_service = auth_service.get()
+                                        return auth_service
+                            except Exception:
+                                # Continue to next backend if this one fails
+                                continue
+
+                            # Method 3: Check if actor_ref has actor_class
+                            if hasattr(actor_ref, "actor_class"):
+                                actor_class = actor_ref.actor_class
+
+                                if actor_class is VKMBackend:
+                                    # Access auth_service through proxy attribute access
+                                    auth_service = backend_proxy.auth_service
+                                    return auth_service
+                        else:
+                            # Try direct attribute access - Pykka proxies should forward attribute access
+                            try:
+                                # Check if this is VKMBackend by checking uri_schemes
+                                uri_schemes = backend_proxy.uri_schemes
+
+                                if "vkm" in uri_schemes:
+                                    auth_service = backend_proxy.auth_service
+                                    return auth_service
+                            except Exception:
+                                # Continue to next backend if direct access fails
+                                continue
+
+                    except Exception:
+                        # Continue to next backend if this one fails
+                        continue
+            else:
+                self.logger.warning("No backends.get() method available")
+        except Exception as e:
+            self.logger.warning(f"Failed to access backends: {e}")
+
+        self.logger.warning("VKMBackend not found in available backends")
         return None
+
+    def _parse_json_body(self) -> dict[str, Any]:
+        """Parse JSON request body with UTF-8 encoding."""
+        try:
+            if isinstance(self.request.body, bytes):
+                body_str = self.request.body.decode("utf-8")
+            else:
+                body_str = self.request.body
+            return json.loads(body_str)
+        except (json.JSONDecodeError, UnicodeDecodeError) as e:
+            raise ValueError(f"Invalid JSON data: {e}") from e
+
+    def _write_error_response(self, status_code: int, error_message: str) -> None:
+        """Write standardized error response."""
+        self.set_status(status_code)
+        self.set_header("Content-Type", "application/json; charset=utf-8")
+        self.write({"status": "error", "error": error_message})
+
+    def _write_status_response(self, status: dict[str, Any]) -> None:
+        """Write standardized status response."""
+        self.set_header("Content-Type", "application/json; charset=utf-8")
+        self.write(status)
+
+    def _validate_auth_service(self) -> VKMAuthService:
+        """Validate auth service is available."""
+        auth_service = self.get_auth_service()
+        if not auth_service:
+            self._write_error_response(503, "VKM backend not available")
+            raise tornado.web.HTTPError(503)
+        return auth_service
 
 
 class MainHandler(BaseHandler):
@@ -171,7 +198,6 @@ class MainHandler(BaseHandler):
 
     def get(self) -> None:
         """Handle GET request for the main page."""
-        # Serve the main HTML page
         self.render("vkm/index.html")
 
 
@@ -180,15 +206,15 @@ class AuthStatusHandler(BaseHandler):
 
     def get(self) -> None:
         """Handle GET request for authentication status."""
-        auth_service = self.get_auth_service()
-        if not auth_service:
-            self.set_status(503)  # Service Unavailable
-            self.write({"status": "error", "error": "VKM backend not available"})
-            return
-
-        status = auth_service.get_status()
-        self.set_header("Content-Type", "application/json")
-        self.write(status)
+        try:
+            auth_service = self._validate_auth_service()
+            status = auth_service.get_status()
+            self._write_status_response(status)
+        except tornado.web.HTTPError:
+            pass
+        except Exception as e:
+            self.logger.exception("Error getting auth status")
+            self._write_error_response(500, str(e))
 
 
 class AuthLoginHandler(BaseHandler):
@@ -196,22 +222,21 @@ class AuthLoginHandler(BaseHandler):
 
     def post(self) -> None:
         """Handle POST request for authentication login."""
-        auth_service = self.get_auth_service()
-        if not auth_service:
-            self.set_status(503)  # Service Unavailable
-            self.write({"status": "error", "error": "VKM backend not available"})
-            return
-
         try:
-            data = json.loads(self.request.body)
+            auth_service = self._validate_auth_service()
+
+            data = self._parse_json_body()
             login = data.get("login")
             password = data.get("password")
 
             if not login or not password:
-                self.set_status(400)  # Bad Request
-                self.write(
-                    {"status": "error", "error": "Login and password are required"}
-                )
+                self._write_error_response(400, "Login and password are required")
+                return
+
+            # Validate input for security
+            is_valid, error_msg = validate_login_password(login, password)
+            if not is_valid:
+                self._write_error_response(400, error_msg)
                 return
 
             # Start the authentication process
@@ -219,16 +244,15 @@ class AuthLoginHandler(BaseHandler):
 
             # Return the current status
             status = auth_service.get_status()
-            self.set_header("Content-Type", "application/json")
-            self.write(status)
+            self._write_status_response(status)
 
-        except json.JSONDecodeError:
-            self.set_status(400)  # Bad Request
-            self.write({"status": "error", "error": "Invalid JSON"})
+        except ValueError as e:
+            self._write_error_response(400, str(e))
+        except tornado.web.HTTPError:
+            pass
         except Exception as e:
-            logger.exception("Error during authentication")
-            self.set_status(500)  # Internal Server Error
-            self.write({"status": "error", "error": str(e)})
+            self.logger.exception("Error during authentication")
+            self._write_error_response(500, str(e))
 
 
 class AuthVerifyHandler(BaseHandler):
@@ -236,14 +260,10 @@ class AuthVerifyHandler(BaseHandler):
 
     def post(self) -> None:
         """Handle POST request for authentication verification."""
-        auth_service = self.get_auth_service()
-        if not auth_service:
-            self.set_status(503)  # Service Unavailable
-            self.write({"status": "error", "error": "VKM backend not available"})
-            return
-
         try:
-            data = json.loads(self.request.body)
+            auth_service = self._validate_auth_service()
+
+            data = self._parse_json_body()
             captcha_solution = data.get("captcha")
             two_factor_code = data.get("code")
 
@@ -251,35 +271,42 @@ class AuthVerifyHandler(BaseHandler):
             status_value = current_status.get("status")
 
             if status_value == AuthStatus.CAPTCHA_REQUIRED.value and captcha_solution:
+                # Validate captcha solution for security
+                is_valid, error_msg = validate_captcha_solution(captcha_solution)
+                if not is_valid:
+                    self._write_error_response(400, error_msg)
+                    return
+
                 # Submit captcha solution
                 auth_service.submit_captcha(captcha_solution)
             elif (
                 status_value == AuthStatus.TWO_FACTOR_REQUIRED.value and two_factor_code
             ):
+                # Validate two-factor code for security
+                is_valid, error_msg = validate_two_factor_code(two_factor_code)
+                if not is_valid:
+                    self._write_error_response(400, error_msg)
+                    return
+
                 # Submit two-factor code
                 auth_service.submit_two_factor(two_factor_code)
             else:
-                self.set_status(400)  # Bad Request
-                self.write(
-                    {
-                        "status": "error",
-                        "error": "Invalid verification data for current status",
-                    }
+                self._write_error_response(
+                    400, "Invalid verification data for current status"
                 )
                 return
 
             # Return the current status
             status = auth_service.get_status()
-            self.set_header("Content-Type", "application/json")
-            self.write(status)
+            self._write_status_response(status)
 
-        except json.JSONDecodeError:
-            self.set_status(400)  # Bad Request
-            self.write({"status": "error", "error": "Invalid JSON"})
+        except ValueError as e:
+            self._write_error_response(400, str(e))
+        except tornado.web.HTTPError:
+            pass
         except Exception as e:
-            logger.exception("Error during verification")
-            self.set_status(500)  # Internal Server Error
-            self.write({"status": "error", "error": str(e)})
+            self.logger.exception("Error during verification")
+            self._write_error_response(500, str(e))
 
 
 class AuthCancelHandler(BaseHandler):
@@ -287,22 +314,118 @@ class AuthCancelHandler(BaseHandler):
 
     def post(self) -> None:
         """Handle POST request for authentication cancellation."""
-        auth_service = self.get_auth_service()
-        if not auth_service:
-            self.set_status(503)  # Service Unavailable
-            self.write({"status": "error", "error": "VKM backend not available"})
-            return
-
         try:
+            auth_service = self._validate_auth_service()
+
             # Cancel the authentication process
             auth_service.cancel_auth()
 
             # Return the current status
             status = auth_service.get_status()
-            self.set_header("Content-Type", "application/json")
-            self.write(status)
+            self._write_status_response(status)
 
+        except tornado.web.HTTPError:
+            pass
         except Exception as e:
-            logger.exception("Error during cancellation")
-            self.set_status(500)  # Internal Server Error
-            self.write({"status": "error", "error": str(e)})
+            self.logger.exception("Error during cancellation")
+            self._write_error_response(500, str(e))
+
+
+class CaptchaPageHandler(BaseHandler):
+    """Handler for captcha page."""
+
+    def get(self) -> None:
+        """Handle GET request for captcha page."""
+        auth_service = self.get_auth_service()
+        if not auth_service:
+            self.redirect("/vkm/")
+            return
+
+        current_status = auth_service.get_status()
+        if current_status.get("status") != AuthStatus.CAPTCHA_REQUIRED.value:
+            self.redirect("/vkm/")
+            return
+
+        captcha_url = current_status.get("captcha_url")
+        if not captcha_url:
+            self._write_error_response(500, "Captcha URL not available")
+            return
+
+        self.render("vkm/captcha.html", captcha_url=captcha_url)
+
+
+class TwoFactorPageHandler(BaseHandler):
+    """Handler for two-factor authentication page."""
+
+    def get(self) -> None:
+        """Handle GET request for two-factor page."""
+        auth_service = self.get_auth_service()
+        if not auth_service:
+            self.redirect("/vkm/")
+            return
+
+        current_status = auth_service.get_status()
+        if current_status.get("status") != AuthStatus.TWO_FACTOR_REQUIRED.value:
+            self.redirect("/vkm/")
+            return
+
+        self.render("vkm/twofactor.html")
+
+
+class ChallengeSubmitHandler(BaseHandler):
+    """Unified handler for captcha and two-factor authentication submission."""
+
+    def post(self) -> None:
+        """Handle POST request for challenge submission."""
+        try:
+            auth_service = self._validate_auth_service()
+
+            data = self._parse_json_body()
+            current_status = auth_service.get_status()
+            status_value = current_status.get("status")
+
+            if status_value == AuthStatus.CAPTCHA_REQUIRED.value:
+                captcha_solution = data.get("captcha_solution")
+                if not captcha_solution:
+                    self._write_error_response(400, "Captcha solution is required")
+                    return
+
+                # Validate captcha solution for security
+                is_valid, error_msg = validate_captcha_solution(captcha_solution)
+                if not is_valid:
+                    self._write_error_response(400, error_msg)
+                    return
+
+                # Submit captcha solution
+                auth_service.submit_captcha(captcha_solution)
+
+            elif status_value == AuthStatus.TWO_FACTOR_REQUIRED.value:
+                two_factor_code = data.get("twofactor_code")
+                if not two_factor_code:
+                    self._write_error_response(400, "Two-factor code is required")
+                    return
+
+                # Validate two-factor code for security
+                is_valid, error_msg = validate_two_factor_code(two_factor_code)
+                if not is_valid:
+                    self._write_error_response(400, error_msg)
+                    return
+
+                # Submit two-factor code
+                auth_service.submit_two_factor(two_factor_code)
+
+            else:
+                self._write_error_response(400, "No challenge required")
+                return
+
+            # Return the current status
+            status = auth_service.get_status()
+            self._write_status_response(status)
+
+        except ValueError as e:
+            self._write_error_response(400, str(e))
+        except tornado.web.HTTPError:
+            pass
+        except Exception as e:
+            self.logger.exception("Error during challenge submission")
+            self._write_error_response(500, str(e))

@@ -6,6 +6,10 @@ import logging
 import threading
 from typing import TYPE_CHECKING
 
+from mopidy_vkm.auth.exceptions import (
+    CaptchaRequiredError,
+    TwoFactorRequiredError,
+)
 from mopidy_vkm.auth.status import AuthStatus
 
 if TYPE_CHECKING:
@@ -28,85 +32,73 @@ class AuthHandlers:
         self._auth_lock = threading.Lock()
         self._wait_event = threading.Event()  # Persistent event for waiting
 
-    def captcha_handler(self, *args: object, **kwargs: object) -> str:
-        """Handle captcha request from TokenReceiver.
+    def captcha_handler(self, captcha_url: str) -> str:
+        """Handle captcha request from TokenReceiver using exception flow.
 
-        Args can be positional or keyword arguments depending on the library
-        implementation.
-        Common patterns:
-        - (captcha_sid, captcha_img)
-        - (captcha_data) where captcha_data has sid and img attributes
-        - captcha_sid=sid, captcha_img=img as kwargs
+        Args:
+            captcha_url: URL to captcha image from vkpymusic.
 
         Returns:
             The captcha solution (will be provided by user).
+
+        Raises:
+            CaptchaRequiredError: Always raised to redirect to web UI.
         """
-        # Try to extract captcha details from various argument patterns
-        captcha_sid = None
-        captcha_img = None
-
-        # Check kwargs first
-        if "captcha_sid" in kwargs:
-            captcha_sid = kwargs["captcha_sid"]
-        if "captcha_img" in kwargs:
-            captcha_img = kwargs["captcha_img"]
-
-        # If not in kwargs, check positional args
-        if captcha_sid is None and len(args) > 0:
-            if isinstance(args[0], str):
-                captcha_sid = args[0]
-            elif hasattr(args[0], "sid") and not isinstance(args[0], str):
-                # Access attribute directly
-                captcha_sid = args[0].sid  # type: ignore[attr-defined]
-
-        if captcha_img is None and len(args) > 1:
-            captcha_img = args[1]
-        elif (
-            captcha_img is None
-            and len(args) > 0
-            and hasattr(args[0], "img")
-            and not isinstance(args[0], str)
-        ):
-            # Access the attribute directly
-            captcha_img = args[0].img  # type: ignore[attr-defined]
-
         with self._auth_lock:
             self.status = AuthStatus.CAPTCHA_REQUIRED
-            self.captcha_sid = str(captcha_sid) if captcha_sid else None
-            self.captcha_img = str(captcha_img) if captcha_img else None
-            logger.info("Captcha required: %s", self.captcha_img)
+            self.captcha_img = captcha_url
+            logger.info("Captcha required: %s", captcha_url)
 
-        # Wait for the captcha solution using the persistent event
-        while self.status == AuthStatus.CAPTCHA_REQUIRED:
-            self._wait_event.wait(0.5)
+        # Always raise exception to redirect to web UI
+        raise CaptchaRequiredError(captcha_url, self)
 
-        # Return the solution or raise an exception if authentication was cancelled
-        auth_cancelled_msg = "Authentication cancelled"
-        if self.status == AuthStatus.ERROR:
-            raise RuntimeError(auth_cancelled_msg)
-
-        return self._captcha_solution
-
-    def two_factor_handler(self, *_args: object, **_kwargs: object) -> str:
-        """Handle two-factor authentication request from TokenReceiver.
+    def two_factor_handler(self) -> str:
+        """Handle two-factor authentication request from TokenReceiver using exception
+        flow.
 
         Returns:
-            The two-factor code (will be provided by the user).
+            The two-factor code (will be provided by user).
+
+        Raises:
+            TwoFactorRequiredError: Always raised to redirect to web UI.
         """
         with self._auth_lock:
             self.status = AuthStatus.TWO_FACTOR_REQUIRED
             logger.info("Two-factor authentication required")
 
-        # Wait for the two-factor code using the persistent event
-        while self.status == AuthStatus.TWO_FACTOR_REQUIRED:
-            self._wait_event.wait(0.5)
+        # Always raise exception to redirect to web UI
+        raise TwoFactorRequiredError(self)
 
-        # Return the code or raise an exception if authentication was cancelled
-        auth_cancelled_msg = "Authentication cancelled"
-        if self.status == AuthStatus.ERROR:
-            raise RuntimeError(auth_cancelled_msg)
+    def _set_challenge_response(self, response_value: str, challenge_type: str) -> None:
+        """Set challenge response and update status.
 
-        return self._two_factor_code
+        Args:
+            response_value: The captcha solution or 2FA code.
+            challenge_type: Type of challenge ('captcha' or '2fa').
+        """
+        with self._auth_lock:
+            if (
+                challenge_type == "captcha"
+                and self.status != AuthStatus.CAPTCHA_REQUIRED
+            ):
+                logger.warning("Captcha solution submitted but not required")
+                return
+            elif (
+                challenge_type == "2fa"
+                and self.status != AuthStatus.TWO_FACTOR_REQUIRED
+            ):
+                logger.warning("Two-factor code submitted but not required")
+                return
+
+            if challenge_type == "captcha":
+                self._captcha_solution = response_value
+            else:  # 2fa
+                self._two_factor_code = response_value
+
+            self.status = AuthStatus.PROCESSING
+            # Wake up any waiting threads
+            self._wait_event.set()
+            logger.info("%s submitted successfully", challenge_type.title())
 
     def submit_captcha(self, captcha_solution: str) -> None:
         """Submit the captcha solution.
@@ -114,16 +106,7 @@ class AuthHandlers:
         Args:
             captcha_solution: The captcha solution.
         """
-        with self._auth_lock:
-            if self.status != AuthStatus.CAPTCHA_REQUIRED:
-                logger.warning("Captcha solution submitted but not required")
-                return
-
-            self._captcha_solution = captcha_solution
-            self.status = AuthStatus.PROCESSING
-            # Wake up any waiting threads
-            self._wait_event.set()
-            logger.info("Captcha solution submitted")
+        self._set_challenge_response(captcha_solution, "captcha")
 
     def submit_two_factor(self, two_factor_code: str) -> None:
         """Submit the two-factor authentication code.
@@ -155,6 +138,44 @@ class AuthHandlers:
                 # Wake up any waiting threads
                 self._wait_event.set()
                 logger.info("Authentication cancelled by user")
+
+    def resume_after_captcha(self) -> str:
+        """Resume authentication after captcha has been submitted.
+
+        Returns:
+            The captcha solution.
+        """
+        return self._captcha_solution
+
+    def resume_after_two_factor(self) -> str:
+        """Resume authentication after 2FA has been submitted.
+
+        Returns:
+            The two-factor code.
+        """
+        return self._two_factor_code
+
+
+# Global instance for web integration
+_global_auth_handlers: AuthHandlers | None = None
+
+
+def get_global_auth_handlers() -> AuthHandlers:
+    """Get the global AuthHandlers instance.
+
+    Returns:
+        The global AuthHandlers instance.
+    """
+    global _global_auth_handlers
+    if _global_auth_handlers is None:
+        _global_auth_handlers = AuthHandlers()
+    return _global_auth_handlers
+
+
+def reset_global_auth_handlers() -> None:
+    """Reset the global AuthHandlers instance."""
+    global _global_auth_handlers
+    _global_auth_handlers = None
 
 
 def get_handler_methods(

@@ -1,65 +1,113 @@
 = Current Active Tasks
 
-== 1. Implement Web Interface
-**Status:** ready for test
+== 1. Complete Authentication Testing & Integration ⏳ BLOCKED
 
-* **Goal:** Create `mopidy_vkm.web` module that:
-** Provides Tornado request handlers for `/vkm/auth` endpoints.
-** Implements the `/vkm/auth/status` method to report current authentication state.
-** Supports login, captcha submission, and 2FA code submission routes.
-** Updates frontend via polling or asynchronous events.
+* **Goal:** Finish 2FA integration and comprehensive testing
+* **Current Block:** IP temporarily blocked by VK API (password bruteforce protection)
+* **Root Cause:** Multiple failed authentication attempts triggered VK protection
+* **Expected Resolution:** 15 minutes to several hours (typical VK API block)
 
-== 2. Manual E2E Testing
-**Status:** ready for test
+**Next Steps:**
+- [ ] Wait for VK IP unblock
+- [ ] Test correct handler integration: `python utils/test_vk_correct_integration.py`
+- [ ] Test complete authentication flow via web interface
+- [ ] Adapt unit tests for current auth handlers structure
+- [ ] Verify captcha and 2FA handling works end-to-end
 
-* **Goal:** Verify the complete authentication flow with a real VK account
-* **Steps:**
-.. Place test account credentials in root `.env` file under:
-*** `VK_TEST_LOGIN`
-*** `VK_TEST_PASSWORD`
-.. Open `/vkm` in browser.
-.. Enter the credentials from `.env` (either manually or via test harness).
-.. If prompted, complete captcha or 2FA step.
-.. Verify `/vkm/auth/status` transitions to `success` and that the VK library is accessible.
+== 3. Временные тестовые утилиты (utils/test_vk_*.py)
 
-== Current Development Status
+**utils/test_vk_correct_integration.py**:
+- **Назначение**: Эталонный тест правильной handler интеграции
+- **Когда удалить**: После успешного тестирования 2FA и captcha handlers в основном проекте
+- **Ключевая находка**: Правильный метод передачи handlers в vkpymusic.auth()
+- **Использование**: `python utils/test_vk_correct_integration.py`
 
-=== Next Development Phase
+**utils/test_vk_auth.py**:
+- **Назначение**: Быстрая диагностика базовой vkpymusic connectivity
+- **Когда удалить**: После стабилизации основной аутентификации
+- **Полезность**: Быстрая проверка соединения с VK
+- **Использование**: `python utils/test_vk_auth.py`
 
-* VKM extension fully functional and ready for music library integration
-* All core systems operational - authentication, web interface, backend
-* Standard port 6680 configuration working properly
-* Ready for player functionality implementation
+**utils/test_vk_integration.py**:
+- **Назначение**: Исследовательский тест (устарел, но исправлен)
+- **Когда удалить**: После успешного тестирования основного решения
+- **Статус**: Исправлены ошибки Pylance, документированы правильные подходы
+- **Полезность**: Показывает какие подходы НЕ работают с vkpymusic API
 
-=== Configuration Reference
+**Стратегия тестирования после разблокировки:**
+1. `python utils/test_vk_correct_integration.py` - проверить handlers интеграцию
+2. Запустить Mopidy: `mopidy --config config/development.conf`
+3. Тестировать web интерфейс: http://localhost:6680/vkm/
+4. Если всё работает - удалить utils/ папку
 
-See <<devcontainerConfigContext.ad,devcontainerConfigContext.ad>> for port configuration details
+== 2. VKPyMusic Integration Analysis ✅ COMPLETED
 
-== Recent Improvements
+**Key Finding**: "Password bruteforce attempt!" is VK API protection, not vkpymusic bug.
 
-=== Authentication Module
+**Captcha Input Clarification**:
+- `default_handlers.py` uses `input("Captcha: ")` for CLI only
+- Our handlers receive clean captcha keys (no prefix trimming needed)
+- Integration works correctly with current implementation
 
-* ✅ Refactored into specialized submodules with clear separation of concerns
-* ✅ Fixed all linter and type checking errors
-* ✅ Improved error handling and security
-* ✅ Enhanced test coverage to 64%
+**Critical Fix Applied**:
+- Fixed `_perform_authentication()` to properly pass handlers to vkpymusic
+- Code integration ready for testing after IP unblock
 
-=== Code Quality Standards
+== Immediate Focus
 
-* All new code must follow the type annotation conventions in `systemPatterns.ad`
-* Linter errors must be fixed or explicitly suppressed with appropriate comments
-* Security-sensitive code must use `secrets` module instead of `random`
-* Exception handling must include specific error messages and proper logging
+* **Priority 1:** Wait for VK IP unblock and test complete authentication flow
+* **Priority 2:** Adapt unit tests for current auth handlers
+* **Priority 3:** Comprehensive E2E validation via web interface
 
-=== Test Context Enhancements
+== 4. VK API Diagnostics Report ✅ COMPLETED
 
-* ✅ Added comprehensive Environment Validation section
-* ✅ Added Service Startup & Validation with troubleshooting commands
-* ✅ Added detailed Troubleshooting Guide for common issues
-* ✅ Documented current problems with diagnostic solutions
+**Полный анализ проблемы "Password bruteforce attempt!" сохранен в `utils/debug_analysis.md`**
 
-== Notes
+**Ключевые находки:**
+- vkpymusic 3.5.1 - актуальная версия
+- Ошибка возникает в `token_receiver.py` при получении `error_type == "password_bruteforce_attempt"`
+- Используется Kate Mobile client с ID `2685278` и User-Agent `KateMobileAndroid/56 lite-460`
+- Запрос отправляется на `https://oauth.vk.com/token` с password flow
 
-* All sensitive data must be accessed through `CredentialsManager` API.
-* Ensure logging does not expose tokens, passwords, or user profile details.
-* **CRITICAL:** Basic Mopidy integration must work before proceeding with feature development.
+**Созданные диагностические инструменты:**
+- `utils/debug_vk_simple.py` - основной скрипт для сбора детальных логов
+- `utils/debug_vk_api.py` - расширенная версия (требует доработки)
+- `utils/debug_analysis.md` - полный анализ проблемы и план решений
+
+**Потенциальные причины проблемы:**
+1. Изменение политики VK API (усиление защиты)
+2. Устаревший client ID/secret или User-Agent
+3. Новые обязательные параметры запроса
+4. IP/fingerprint detection не-мобильных устройств
+
+**Инструкция по использованию:**
+```bash
+python utils/debug_vk_simple.py
+# Ввести логин и пароль VK при запросе
+# Проанализировать debug_vk_simple.log
+```
+
+**Интерпретация результатов логов:**
+- **HTTP 401 Unauthorized** + **Password bruteforce attempt!** = теневой бан VK
+- **HTTP 200 OK** + **access_token** = аутентификация успешна
+- **Server: kittenx** + **X-Powered-By: KPHP** = стандартная VK infrastructure
+- **X-Frontend: frontXXXXXX** = конкретный фронтенд VK (может меняться)
+- **Set-Cookie remixir=DELETED** = попытка VK сбросить сессию
+
+**Текущая проблема: ТЕНЕВОЙ БАН VK**
+- **Причина**: VK заблокировал сочетание IP + client ID/secret (2685278/lxhD8OD7dMsqtXIm5IUY)
+- **Статус**: HTTP 401 + "Password bruteforce attempt!" в логах
+- **Длительность**: от нескольких часов до нескольких дней
+- **Решение**: ожидание разбана или смена IP/VPN
+
+**План действий:**
+1. Периодически запускать `python utils/debug_vk_simple.py` для проверки
+2. Следить за изменением HTTP статуса с 401 на 200
+3. При успехе - сохранить токен и продолжить разработку
+4. Варианты обхода: VPN, ожидание, смена IP адреса
+
+**📖 Детальная инструкция**: `utils/README_DIAGNOSTICS.md`
+- Полное руководство по использованию диагностических инструментов
+- Интерпретация всех возможных статусов и ответов
+- Пошаговый план действий во время и после бана
+- Частые вопросы и ответы
