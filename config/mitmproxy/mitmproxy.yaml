@@ -1,0 +1,27 @@
+# Конфигурация mitmdump для анализа API
+# Сохраняет логи в директорию проекта logs/
+
+# Сетевые настройки
+listen_port: 6680
+listen_host: 0.0.0.0
+
+# Настройки логирования
+save_stream_file: false  # Отключаем stream лог, используем flow файлы
+stream_large_bodies: 1048576  # 1MB
+
+# Настройки сохранения flow файлов
+save_flow_file: true
+flow_detail: 3  # Максимальный уровень детализации
+flow_store: disk
+
+# Настройки логирования
+termlog_verbosity: info
+eventlog_verbosity: info
+
+# Настройки фильтрации
+showhost: true
+mode: regular
+
+# Отключаем веб-интерфейс (не нужен для mitmdump)
+web_open_browser: false
+web_port: 0  # Отключаем

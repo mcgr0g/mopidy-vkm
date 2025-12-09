@@ -85,3 +85,7 @@ docker-cache/
 
 # user data
 data
+
+# mitmproxy certificates and temporary files (exclude config/mitmproxy/mitmproxy.yaml)
+config/mitmproxy/*
+!config/mitmproxy/mitmproxy.yaml
